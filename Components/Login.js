@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import axios from "axios";
-import { useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import {
   ALERT_TYPE,
   Dialog,
@@ -19,14 +19,17 @@ import {
 export function Login() {
   const [celular, setCelular] = useState("");
   const [isPressed, setIsPressed] = useState(false);
+  const [isPressedG, setIsPressedG] = useState(false);
   const [telefono, setTelefono] = useState(true);
   const [codigo, setCodigo] = useState("");
+  const navigation = useNavigation();
+
   useFocusEffect(
     React.useCallback(() => {
       const backAction = () => {
         if (!telefono) {
           setTelefono(true);
-          return true; 
+          return true;
         }
         return false;
       };
@@ -37,7 +40,7 @@ export function Login() {
       return () => backHandler.remove();
     }, [telefono])
   );
-  
+
   const enviarCodigo = async () => {
     if (!celular.trim()) {
       Dialog.show({
@@ -58,7 +61,9 @@ export function Login() {
       return;
     }
     try {
-      await axios.post(`https://truequedo-back-r9ah.onrender.com/auth/enviarCodigo/+591${celular}`);
+     /* await axios.post(
+        `https://truequedo-back-r9ah.onrender.com/auth/enviarCodigo/+591${celular}`
+      );*/
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,
         title: "Código Enviado",
@@ -95,20 +100,21 @@ export function Login() {
       return;
     }
     try {
-      await axios.post(
+      /*const response = await axios.post(
         "https://truequedo-back-r9ah.onrender.com/auth/verificarCodigo",
         {
           phone: `+591${celular}`,
           code: codigo,
         }
-      );
+      );*/
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,
         title: "Código Verificado",
-        textBody: response.data.message || "Código correcto",
+        textBody:  "Código correcto",
         button: "Continuar",
         onPressButton: () => {
           Dialog.hide();
+          navigation.navigate("Home");
         },
       });
       setCodigo("");
@@ -116,13 +122,22 @@ export function Login() {
       Dialog.show({
         type: ALERT_TYPE.DANGER,
         title: "Error",
-        textBody: error.response?.data?.message || "Error al verificar el código",
+        textBody:
+          error.response?.data?.message || "Error al verificar el código",
         button: "Aceptar",
       });
       console.error(error);
     }
   };
-
+  const iniciarGoogle = () => {
+    Dialog.show({
+      type: ALERT_TYPE.DANGER,
+      title: "Error",
+      textBody: "Proximamente",
+      button: "Aceptar",
+      
+    });
+  };
   return (
     <AlertNotificationRoot>
       {telefono ? (
@@ -150,6 +165,22 @@ export function Login() {
               ]}
             >
               Iniciar sesión
+            </Text>
+          </TouchableHighlight>
+          <TouchableHighlight
+            underlayColor="#fff"
+            onShowUnderlay={() => setIsPressedG(true)}
+            onHideUnderlay={() => setIsPressedG(false)}
+            onPress={iniciarGoogle}
+            style={styles.botonInicioG}
+          >
+            <Text
+              style={[
+                styles.textoBoton,
+                { color: isPressedG ? "#000" : "#fff" },
+              ]}
+            >
+              Inicio con google
             </Text>
           </TouchableHighlight>
         </View>
@@ -206,6 +237,14 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 2,
     borderColor: "#000",
+  },
+  botonInicioG: {
+    backgroundColor: "#000",
+    padding: 15,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: "#000",
+    marginTop: 20,
   },
   textoBoton: {
     color: "#fff",
