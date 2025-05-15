@@ -15,20 +15,22 @@ import {
   Dialog,
   AlertNotificationRoot,
 } from "react-native-alert-notification";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { urlBackend } from "./VariablesEntorno";
 
-export function Login() {
+export default function Login() {
   const [celular, setCelular] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [isPressed, setIsPressed] = useState(false);
   const [isPressedG, setIsPressedG] = useState(false);
-  const [telefono, setTelefono] = useState(true);
-  const [codigo, setCodigo] = useState("");
+  const [mostrandoInputCelular, setMostrandoInputCelular] = useState(true);
   const navigation = useNavigation();
 
   useFocusEffect(
     React.useCallback(() => {
       const backAction = () => {
-        if (!telefono) {
-          setTelefono(true);
+        if (!mostrandoInputCelular) {
+          setMostrandoInputCelular(true);
           return true;
         }
         return false;
@@ -38,109 +40,114 @@ export function Login() {
         backAction
       );
       return () => backHandler.remove();
-    }, [telefono])
+    }, [mostrandoInputCelular])
   );
 
-  const enviarCodigo = async () => {
+  const enviarCodigo = () => {
     if (!celular.trim()) {
-      Dialog.show({
+      return Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Campo vacío",
         textBody: "Por favor ingresa un número de celular",
         button: "Aceptar",
       });
-      return;
     }
     if (!/^\d{8}$/.test(celular)) {
-      Dialog.show({
+      return Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Número inválido",
         textBody: "El número debe tener 8 dígitos",
         button: "Aceptar",
       });
-      return;
     }
-    try {
-     /* await axios.post(
-        `https://truequedo-back-r9ah.onrender.com/auth/enviarCodigo/+591${celular}`
-      );*/
-      Dialog.show({
-        type: ALERT_TYPE.SUCCESS,
-        title: "Código Enviado",
-        textBody: "Se envió correctamente al número",
-        button: "Aceptar",
-        onPressButton: () => {
-          setTelefono(false);
-          Dialog.hide();
-        },
+    axios
+      .post(urlBackend`auth/enviarCodigo/+591${celular}`)
+      .then(() => {
+        setMostrandoInputCelular(false);
+        Dialog.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: "Código Enviado",
+          textBody: "Se envió correctamente al número",
+          button: "Aceptar",
+        });
+      })
+      .catch((error) => {
+        const errorMsg =
+          error.response?.data?.error ||
+          "Error desconocido al enviar el código";
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: "Error",
+          textBody: errorMsg,
+          button: "Aceptar",
+        });
+        console.error("Error al enviar código:", error);
       });
-      setTimeout(() => {
-        setTelefono(false);
-        Dialog.hide();
-      }, 5000);
-    } catch (error) {
-      Dialog.show({
-        type: ALERT_TYPE.DANGER,
-        title: "Error",
-        textBody: "Error al enviar el código",
-        button: "Aceptar",
-      });
-      console.error(error);
-    }
   };
 
-  const verificarCodigo = async () => {
+  const verificarCodigo = () => {
     if (!codigo.trim()) {
-      Dialog.show({
+      return Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Campo vacío",
         textBody: "Por favor ingresa el código",
         button: "Aceptar",
       });
-      return;
     }
-    try {
-      /*const response = await axios.post(
-        "https://truequedo-back-r9ah.onrender.com/auth/verificarCodigo",
-        {
-          phone: `+591${celular}`,
-          code: codigo,
+    axios
+      .post(urlBackend + "auth/verificarCodigo", {
+        phone: `+591${celular}`,
+        code: codigo,
+      })
+      .then(async (response) => {
+        const { usuario, token } = response.data;
+        if (!usuario) {
+          return Dialog.show({
+            type: ALERT_TYPE.DANGER,
+            title: "Error",
+            textBody: "No se encontró el usuario",
+            button: "Aceptar",
+          });
         }
-      );*/
-      Dialog.show({
-        type: ALERT_TYPE.SUCCESS,
-        title: "Código Verificado",
-        textBody:  "Código correcto",
-        button: "Continuar",
-        onPressButton: () => {
-          Dialog.hide();
-          navigation.navigate("Home");
-        },
+        try {
+          await AsyncStorage.setItem("token", token);
+          await AsyncStorage.setItem("codUsuario", usuario.codUsuario);
+        } catch (err) {
+          console.error("Error guardando token:", err);
+        }
+        navigation.navigate("Home", { usuario, token });
+        Dialog.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: "Código Verificado",
+          textBody: "Código correcto",
+          button: "Continuar",
+        });
+        setCodigo("");
+      })
+      .catch((error) => {
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: "Error",
+          textBody:
+            error.response?.data?.error || "Error al verificar el código",
+          button: "Aceptar",
+        });
+        console.error("Error en verificación:", error);
       });
-      setCodigo("");
-    } catch (error) {
-      Dialog.show({
-        type: ALERT_TYPE.DANGER,
-        title: "Error",
-        textBody:
-          error.response?.data?.message || "Error al verificar el código",
-        button: "Aceptar",
-      });
-      console.error(error);
-    }
   };
+
   const iniciarGoogle = () => {
     Dialog.show({
       type: ALERT_TYPE.DANGER,
       title: "Error",
-      textBody: "Proximamente",
+      textBody: "Próximamente",
       button: "Aceptar",
-      
     });
   };
+
   return (
     <AlertNotificationRoot>
-      {telefono ? (
+      {mostrandoInputCelular ? (
         <View style={styles.container}>
           <StatusBar style="light" />
           <TextInput
@@ -180,9 +187,20 @@ export function Login() {
                 { color: isPressedG ? "#000" : "#fff" },
               ]}
             >
-              Inicio con google
+              Inicio con Google
             </Text>
           </TouchableHighlight>
+          <View style={styles.registerContainer}>
+            <Text style={styles.registerText}>
+              ¿No tienes cuenta?{" "}
+              <Text
+                style={styles.registerLink}
+                onPress={() => navigation.navigate("Register")}
+              >
+                Regístrate
+              </Text>
+            </Text>
+          </View>
         </View>
       ) : (
         <View style={styles.container}>
@@ -249,6 +267,18 @@ const styles = StyleSheet.create({
   textoBoton: {
     color: "#fff",
     textAlign: "center",
+    fontWeight: "bold",
+  },
+  registerContainer: {
+    marginTop: 30,
+    alignItems: "center",
+  },
+  registerText: {
+    fontSize: 14,
+    color: "#444",
+  },
+  registerLink: {
+    color: "#007BFF",
     fontWeight: "bold",
   },
 });
