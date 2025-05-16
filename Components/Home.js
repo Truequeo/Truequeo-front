@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import { useRoute } from "@react-navigation/native";
+import { useIsFocused, useRoute } from "@react-navigation/native";
 import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
@@ -10,12 +10,12 @@ export default function Home() {
   const { usuario, token } = route.params;
   const [filtroSeleccionado, setFiltroSeleccionado] = useState("Todo");
   const navigation = useNavigation();
-
   const handleProfilePress = () => {
     navigation.replace("Profile", { usuario, token });
   };
 
   const handleRecomendado = () => {
+    console.log(usuario);
     setFiltroSeleccionado("Recomendado");
     Alert.alert("Filtro", "Filtro: Recomendado");
   };
@@ -34,18 +34,28 @@ export default function Home() {
     Alert.alert("Opciones", "Abrir opciones avanzadas");
   };
 
+  const isFocused = useIsFocused();
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedArticulo, setSelectedArticulo] = useState(null);
+
+  useEffect(() => {
+    if (isFocused && route.params?.selectedImagen) {
+      setSelectedImage(route.params?.selectedImagen);
+    }
+    if (isFocused && route.params?.selectedArticulo) {
+      setSelectedArticulo(route.params?.selectedArticulo);
+    }
+  }, [isFocused, route.params?.selectedImagen]);
   return (
     <View style={styles.container}>
       {/* Encabezado */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleProfilePress}>
-          <Text>{usuario?.nombreusuario}</Text>
           <Image
             source={{ uri: `${usuario.fotoperfil}?t=${new Date().getTime()}` }}
             style={styles.profileImage}
           />
         </TouchableOpacity>
-
         <Text style={styles.title}>TRUEQUEO</Text>
         <Icon name="notifications-off-outline" size={45} color="black" />
       </View>
@@ -105,8 +115,24 @@ export default function Home() {
           <Icon name="close-outline" size={30} color="#000" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.bigButton}>
-          <Icon name="download-outline" size={30} color="#fff" />
+        <TouchableOpacity
+          onPress={() => {
+            navigation.replace("VerArticulos", {
+              usuario,
+              token,
+              selectedImage
+            });
+          }}
+          style={styles.bigButton}
+        >
+          {selectedImage ? (
+            <Image
+            source={{ uri: `${selectedImage}?t=${new Date().getTime()}` }}
+            style={styles.imageIcon}
+          />
+          ) : (
+            <Icon name="download-outline" size={30} color="#fff" />
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.smallButton}>
@@ -197,11 +223,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   bigButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: "#444",
     justifyContent: "center",
     alignItems: "center",
+  },
+   imageIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
 });

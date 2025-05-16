@@ -22,48 +22,46 @@ import { useNavigation } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
 import { BackHandler } from "react-native";
 
-export default function AñadirProducto() {
+export default function AnadirProducto() {
   const route = useRoute();
   const { usuario, token } = route.params;
   const codusuario = usuario.codusuario;
   const navigation = useNavigation();
 
-  const [codarticulo, setCodArticulo] = useState("");
   const [nombrearticulo, setNombreArticulo] = useState("");
   const [detallearticulo, setDetalleArticulo] = useState("");
   const [estadoarticulo, setEstadoArticulo] = useState("activo");
   const [fotoarticulo, setFotoArticulo] = useState(null); // URL local
   const [categorias, setCategorias] = useState("");
   useFocusEffect(
-  React.useCallback(() => {
-    const onBackPress = () => {
-      Alert.alert(
-        "Confirmación",
-        "¿Estás seguro de que deseas salir sin registrar el artículo?",
-        [
-          {
-            text: "Cancelar",
-            onPress: () => null,
-            style: "cancel",
-          },
-          {
-            text: "Sí, salir",
-            onPress: () => navigation.replace("Home", { usuario, token }),
-          },
-        ]
+    React.useCallback(() => {
+      const onBackPress = () => {
+        Alert.alert(
+          "Confirmación",
+          "¿Estás seguro de que deseas salir sin registrar el artículo?",
+          [
+            {
+              text: "Cancelar",
+              onPress: () => null,
+              style: "cancel",
+            },
+            {
+              text: "Sí, salir",
+              onPress: () => navigation.replace("Home", { usuario, token }),
+            },
+          ]
+        );
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
       );
-      return true; 
-    };
 
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      onBackPress
-    );
-
-    return () => backHandler.remove();
-  }, [navigation])
-);
-
+      return () => backHandler.remove();
+    }, [navigation])
+  );
 
   const seleccionarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -83,43 +81,72 @@ export default function AñadirProducto() {
     }
   };
 
-  const enviarProducto = () => {
+  const enviarProducto = async () => {
     if (!fotoarticulo) {
       Alert.alert("Imagen faltante", "Por favor selecciona una imagen");
       return;
     }
-    const datos = {
-      codarticulo,
-      codusuario,
-      nombrearticulo,
-      detallearticulo,
-      estadoarticulo,
-      fotoarticulo,
-      categorias: categorias.split(",").map((c) => c.trim()),
+
+    const generarCodigoArticulo = () => {
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 6);
+      return `ART-${timestamp}-${random}`.toUpperCase();
     };
-    axios
-      .post(urlBackend + "articulo/createArticulo", datos)
-      .then((response) => {
-        Dialog.show({
-          type: ALERT_TYPE.SUCCESS,
-          title: "Articulo creado",
-          textBody: "Se creo articulo",
-          button: "Aceptar",
-          onPressButton: () => {
-            Dialog.hide();
-            navigation.replace("Home", { usuario, token });
+
+    const codarticulo = generarCodigoArticulo();
+    const formData = new FormData();
+    formData.append("codarticulo", codarticulo);
+    formData.append("codusuario", codusuario);
+    formData.append("nombrearticulo", nombrearticulo);
+    formData.append("detallearticulo", detallearticulo);
+    formData.append("estadoarticulo", estadoarticulo);
+
+    formData.append(
+      "categorias",
+      categorias.split(",").map((c) => c.trim())
+    );
+
+    const fileName = fotoarticulo.split("/").pop();
+    const fileType = fileName.split(".").pop();
+
+    formData.append("fotoarticulo", {
+      uri: fotoarticulo,
+      name: fileName,
+      type: `image/${fileType}`,
+    });
+
+    try {
+      const response = await axios.post(
+        urlBackend + "articulo/createArticulo",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
           },
-        });
-      })
-      .catch((error) => {
-        console.error("Error al registrar el usuario:", error);
-        Dialog.show({
-          type: ALERT_TYPE.DANGER,
-          title: "Error",
-          textBody: "Error",
-          button: "Aceptar",
-        });
+        }
+      );
+
+      const usuarioActualizado = response.data;
+      navigation.navigate("Home", { usuario: usuarioActualizado, token });
+
+      Dialog.show({
+        type: ALERT_TYPE.SUCCESS,
+        title: "Artículo creado",
+        textBody: "Se creó el artículo correctamente",
+        button: "Aceptar",
+        onPressButton: () => {
+          Dialog.hide();
+        },
       });
+    } catch (error) {
+      console.error("Error al registrar artículo:", error.stack);
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: "Error",
+        textBody: "Error al registrar el artículo",
+        button: "Aceptar",
+      });
+    }
   };
 
   return (
@@ -127,12 +154,6 @@ export default function AñadirProducto() {
       <View style={styles.containerTitulo}>
         <Text style={styles.textoTitulo}>Añadir producto</Text>
       </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Código del artículo"
-        value={codarticulo}
-        onChangeText={setCodArticulo}
-      />
       <TextInput
         style={styles.input}
         placeholder="Nombre del artículo"
