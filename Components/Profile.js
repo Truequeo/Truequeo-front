@@ -28,30 +28,38 @@ export default function Profile() {
   const [fotoperfil, setFotoperfil] = useState(null);
   const navigation = useNavigation();
   const [actualizarUser, setActualizarUser] = useState(null);
+  const [verComentarios, setVercomentarios] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       const backAction = () => {
-        const usuarioFinal = actualizarUser ?? usuario;
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Home", params: { usuario: usuarioFinal, token } }],
-        });
-        return true;
+        if (!verComentarios) {
+          const usuarioFinal = actualizarUser ?? usuario;
+          navigation.reset({
+            index: 0,
+            routes: [
+              { name: "Home", params: { usuario: usuarioFinal, token } },
+            ],
+          });
+          return true; 
+        } else {
+          setVercomentarios(false);
+          return true;
+        }
       };
-
       const backHandler = BackHandler.addEventListener(
         "hardwareBackPress",
         backAction
       );
       return () => backHandler.remove();
-    }, [actualizarUser])
+    }, [verComentarios, actualizarUser])
   );
 
   useEffect(() => {
     if (usuario?.fotoperfil) {
       setFotoperfil(`${usuario.fotoperfil}?t=${Date.now()}`);
     }
+    
   }, [usuario?.fotoperfil]);
 
   const seleccionarImagen = async () => {
@@ -67,7 +75,6 @@ export default function Profile() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
     });
-
     if (!resultado.canceled) {
       setFotoperfil(resultado.assets[0].uri);
     }
@@ -105,7 +112,6 @@ export default function Profile() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "";
-
     const meses = [
       "enero",
       "febrero",
@@ -120,13 +126,10 @@ export default function Profile() {
       "noviembre",
       "diciembre",
     ];
-
     const fechaObj = new Date(fecha);
-
     const dia = fechaObj.getDate().toString().padStart(2, "0");
     const mes = meses[fechaObj.getMonth()];
     const año = fechaObj.getFullYear();
-
     return `${dia} de ${mes} de ${año}`;
   };
   const renderItem = ({ item }) => {
@@ -140,7 +143,6 @@ export default function Profile() {
         </TouchableOpacity>
       );
     }
-
     return (
       <TouchableOpacity
         style={styles.itemContainer}
@@ -164,101 +166,145 @@ export default function Profile() {
     );
   };
   return (
-    <FlatList
-      ListHeaderComponent={
-        <View style= {styles.container}>
-          {/* Foto de perfil */}
-          <TouchableOpacity
-            onPress={editando ? seleccionarImagen : null}
-            activeOpacity={editando ? 0.7 : 1}
-          >
-            <Image
-              source={{ uri: fotoperfil || "https://via.placeholder.com/120" }}
-              style={styles.profileImage}
-            />
-          </TouchableOpacity>
-
-          {/* Nombre de usuario */}
-          {editando ? (
-            <TextInput
-              style={styles.input}
-              value={nombre}
-              onChangeText={setNombre}
-              placeholder="Nombre"
-            />
-          ) : (
-            <Text style={styles.name}>{nombre}</Text>
-          )}
-
-          {/* Celular */}
-          <View style={styles.infoRow}>
-            <Icon name="call-outline" size={20} />
-            <Text style={styles.infoText}>{celular}</Text>
-          </View>
-
-          {/* Ubicación */}
-          <View style={styles.infoRow}>
-            <Icon name="location-outline" size={20} />
-            {editando ? (
-              <TextInput
-                style={styles.inputInline}
-                value={ubicacion}
-                onChangeText={setUbicacion}
-                placeholder="Ubicación"
-              />
-            ) : (
-              <Text style={styles.infoText}>{ubicacion}</Text>
-            )}
-          </View>
-
-          {/* Fecha de nacimiento */}
-          {usuario?.fechanacimiento && !editando && (
-            <View style={styles.infoRow}>
-              <Icon name="calendar-outline" size={20} />
-              <Text style={styles.infoText}>
-                {formatearFecha(usuario.fechanacimiento)}
-              </Text>
+    <>
+      {!verComentarios && (
+        <FlatList
+          ListHeaderComponent={
+            <View style={styles.container}>
+              <TouchableOpacity
+                onPress={editando ? seleccionarImagen : null}
+                activeOpacity={editando ? 0.7 : 1}
+              >
+                <Image
+                  source={{
+                    uri: fotoperfil || "https://via.placeholder.com/120",
+                  }}
+                  style={styles.profileImage}
+                />
+              </TouchableOpacity>
+              {/* Nombre de usuario */}
+              {editando ? (
+                <TextInput
+                  style={styles.input}
+                  value={nombre}
+                  onChangeText={setNombre}
+                  placeholder="Nombre"
+                />
+              ) : (
+                <Text style={styles.name}>{nombre}</Text>
+              )}
+              {/* Celular */}
+              <View style={styles.infoRow}>
+                <Icon name="call-outline" size={20} />
+                <Text style={styles.infoText}>{celular}</Text>
+              </View>
+              {/* Ubicación */}
+              <View style={styles.infoRow}>
+                <Icon name="location-outline" size={20} />
+                {editando ? (
+                  <TextInput
+                    style={styles.inputInline}
+                    value={ubicacion}
+                    onChangeText={setUbicacion}
+                    placeholder="Ubicación"
+                  />
+                ) : (
+                  <Text style={styles.infoText}>{ubicacion}</Text>
+                )}
+              </View>
+              {/* Fecha de nacimiento */}
+              {usuario?.fechanacimiento && !editando && (
+                <View style={styles.infoRow}>
+                  <Icon name="calendar-outline" size={20} />
+                  <Text style={styles.infoText}>
+                    {formatearFecha(usuario.fechanacimiento)}
+                  </Text>
+                </View>
+              )}
+              {/* Botón Editar/Guardar */}
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={async () => {
+                  if (editando) {
+                    await new Promise((resolve) => setTimeout(resolve, 3100));
+                    guardarCambios();
+                  } else {
+                    setEditando(true);
+                  }
+                }}
+              >
+                <Icon
+                  name={editando ? "save-outline" : "create-outline"}
+                  size={20}
+                  color="#fff"
+                />
+                <Text style={styles.editButtonText}>
+                  {editando ? "Guardar" : "Editar Perfil"}
+                </Text>
+              </TouchableOpacity>
+              {/* ★★★★★★★★★★ Rating de usuario */}
+              <TouchableOpacity
+                onPress={() => setVercomentarios(true)}
+                style={styles.ratingWrapper}
+              >
+                <Text style={styles.ratingValue}>
+                  {Number.isInteger(parseFloat(usuario.ratingusuario))
+                    ? parseInt(usuario.ratingusuario)
+                    : parseFloat(usuario.ratingusuario).toFixed(1)}{" "}
+                  / 10
+                </Text>
+                <View style={styles.ratingContainer}>
+                  {[...Array(10)].map((_, index) => {
+                    const rating = parseFloat(usuario.ratingusuario || "0");
+                    const filled = index + 1 <= Math.floor(rating);
+                    const half =
+                      index + 1 > Math.floor(rating) &&
+                      rating - Math.floor(rating) >= 0.25 &&
+                      rating - Math.floor(rating) < 0.75;
+                    const iconName = filled
+                      ? "star"
+                      : half
+                      ? "star-half"
+                      : "star-outline";
+                    return (
+                      <Icon
+                        key={index}
+                        name={iconName}
+                        size={20}
+                        color="#FFD700"
+                      />
+                    );
+                  })}
+                </View>
+              </TouchableOpacity>
             </View>
-          )}
-
-          {/* Botón Editar/Guardar */}
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={async () => {
-              if (editando) {
-                await new Promise((resolve) => setTimeout(resolve, 3100));
-                guardarCambios();
-              } else {
-                setEditando(true);
-              }
-            }}
-          >
-            <Icon
-              name={editando ? "save-outline" : "create-outline"}
-              size={20}
-              color="#fff"
-            />
-            <Text style={styles.editButtonText}>
-              {editando ? "Guardar" : "Editar Perfil"}
-            </Text>
-          </TouchableOpacity>
+          }
+          data={[...usuario.articulos, { isAddButton: true }]}
+          renderItem={renderItem}
+          keyExtractor={(item, index) => index.toString()}
+          numColumns={2}
+          contentContainerStyle={styles.container}
+        />
+      )}
+      {verComentarios && (
+        <View style={{ padding: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
+            Comentarios del usuario
+          </Text>
+          {/* Aquí podrías mapear una lista de comentarios si tienes */}
+          <Text>📢 Aquí irán los comentarios...</Text>
         </View>
-      }
-      data={[...usuario.articulos, { isAddButton: true }]}
-      renderItem={renderItem}
-      keyExtractor={(item, index) => index.toString()}
-      numColumns={2}
-      contentContainerStyle={styles.container}
-    />
+      )}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-  marginTop: 20,
-  alignItems: "center",
-  paddingHorizontal: 16, 
-},
+    marginTop: 20,
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
 
   profileImage: {
     width: 120,
@@ -308,7 +354,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 30,
     marginTop: 30,
-    marginBottom: 30, 
+    marginBottom: 30,
   },
   editButtonText: {
     color: "#fff",
@@ -355,5 +401,17 @@ const styles = StyleSheet.create({
   plus: {
     fontSize: 40,
     color: "#aaa",
+  },
+  ratingWrapper: {
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  ratingValue: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  ratingContainer: {
+    flexDirection: "row",
   },
 });

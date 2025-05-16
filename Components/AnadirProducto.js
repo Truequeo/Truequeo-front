@@ -27,12 +27,12 @@ export default function AnadirProducto() {
   const { usuario, token } = route.params;
   const codusuario = usuario.codusuario;
   const navigation = useNavigation();
-
   const [nombrearticulo, setNombreArticulo] = useState("");
   const [detallearticulo, setDetalleArticulo] = useState("");
   const [estadoarticulo, setEstadoArticulo] = useState("activo");
-  const [fotoarticulo, setFotoArticulo] = useState(null); // URL local
+  const [fotoarticulo, setFotoArticulo] = useState(null); 
   const [categorias, setCategorias] = useState("");
+
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
@@ -53,12 +53,10 @@ export default function AnadirProducto() {
         );
         return true;
       };
-
       const backHandler = BackHandler.addEventListener(
         "hardwareBackPress",
         onBackPress
       );
-
       return () => backHandler.remove();
     }, [navigation])
   );
@@ -69,13 +67,11 @@ export default function AnadirProducto() {
       Alert.alert("Permiso requerido", "Se necesita acceso a tus fotos");
       return;
     }
-
     const resultado = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: false,
       quality: 1,
     });
-
     if (!resultado.cancelled) {
       setFotoArticulo(resultado.assets[0].uri);
     }
@@ -86,13 +82,11 @@ export default function AnadirProducto() {
       Alert.alert("Imagen faltante", "Por favor selecciona una imagen");
       return;
     }
-
     const generarCodigoArticulo = () => {
       const timestamp = Date.now().toString(36);
       const random = Math.random().toString(36).substring(2, 6);
       return `ART-${timestamp}-${random}`.toUpperCase();
     };
-
     const codarticulo = generarCodigoArticulo();
     const formData = new FormData();
     formData.append("codarticulo", codarticulo);
@@ -100,21 +94,17 @@ export default function AnadirProducto() {
     formData.append("nombrearticulo", nombrearticulo);
     formData.append("detallearticulo", detallearticulo);
     formData.append("estadoarticulo", estadoarticulo);
-
     formData.append(
       "categorias",
       categorias.split(",").map((c) => c.trim())
     );
-
     const fileName = fotoarticulo.split("/").pop();
     const fileType = fileName.split(".").pop();
-
     formData.append("fotoarticulo", {
       uri: fotoarticulo,
       name: fileName,
       type: `image/${fileType}`,
     });
-
     try {
       const response = await axios.post(
         urlBackend + "articulo/createArticulo",
@@ -125,10 +115,8 @@ export default function AnadirProducto() {
           },
         }
       );
-
       const usuarioActualizado = response.data;
       navigation.navigate("Home", { usuario: usuarioActualizado, token });
-
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,
         title: "Artículo creado",

@@ -4,39 +4,43 @@ import Icon from "react-native-vector-icons/Ionicons";
 import { useIsFocused, useRoute } from "@react-navigation/native";
 import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
+import { urlBackend } from "./VariablesEntorno";
 
 export default function Home() {
   const route = useRoute();
   const { usuario, token } = route.params;
   const [filtroSeleccionado, setFiltroSeleccionado] = useState("Todo");
   const navigation = useNavigation();
+  const [imageTimestamp, setImageTimestamp] = useState(Date.now());
+  const [imageSelectTimestamp, setImageSelectTimestamp] = useState(Date.now());
+
   const handleProfilePress = () => {
     navigation.replace("Profile", { usuario, token });
   };
 
   const handleRecomendado = () => {
-    console.log(usuario);
-    setFiltroSeleccionado("Recomendado");
-    Alert.alert("Filtro", "Filtro: Recomendado");
+    if (selectedArticulo) {
+      setFiltroSeleccionado("Recomendado");
+    }
   };
 
   const handleTodo = () => {
     setFiltroSeleccionado("Todo");
-    Alert.alert("Filtro", "Filtro: Todo");
   };
 
   const handleCerca = () => {
     setFiltroSeleccionado("Cerca");
-    Alert.alert("Filtro", "Filtro: Cerca");
   };
 
   const handleOpciones = () => {
-    Alert.alert("Opciones", "Abrir opciones avanzadas");
   };
 
   const isFocused = useIsFocused();
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedArticulo, setSelectedArticulo] = useState(null);
+  const [articulos, setArticulos] = useState([]);
+  const [indiceArticulo, setIndiceArticulo] = useState(0);
 
   useEffect(() => {
     if (isFocused && route.params?.selectedImagen) {
@@ -45,21 +49,50 @@ export default function Home() {
     if (isFocused && route.params?.selectedArticulo) {
       setSelectedArticulo(route.params?.selectedArticulo);
     }
-  }, [isFocused, route.params?.selectedImagen]);
+    if (isFocused && filtroSeleccionado === "Todo") {
+      axios
+        .get(urlBackend + "articulo/getArticulo/" + usuario.codusuario)
+        .then((response) => {
+          setArticulos(response.data);
+          setIndiceArticulo(0);
+        });
+    }
+    if (isFocused && filtroSeleccionado === "Recomendado") {
+      axios
+        .get(
+          urlBackend +
+            "articulo/getArticuloRecomendado/" +
+            selectedArticulo.codarticulo
+        )
+        .then((response) => {
+          setArticulos(response.data);
+          setIndiceArticulo(0);
+          console.log(articulos);
+        });
+    }
+    if (isFocused && filtroSeleccionado === "Cerca") {
+      axios
+        .get(urlBackend + "articulo/getArticuloCerca/" + usuario.codusuario)
+        .then((response) => {
+          setArticulos(response.data);
+          setIndiceArticulo(0);
+          console.log(articulos);
+        });
+    }
+  }, [isFocused, route.params?.selectedImagen, filtroSeleccionado]);
   return (
     <View style={styles.container}>
       {/* Encabezado */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleProfilePress}>
           <Image
-            source={{ uri: `${usuario.fotoperfil}?t=${new Date().getTime()}` }}
+            source={{ uri: `${usuario.fotoperfil}?t=${imageTimestamp}` }}
             style={styles.profileImage}
           />
         </TouchableOpacity>
         <Text style={styles.title}>TRUEQUEO</Text>
         <Icon name="notifications-off-outline" size={45} color="black" />
       </View>
-
       {/* Filtros */}
       <View style={styles.filters}>
         <TouchableOpacity onPress={handleRecomendado}>
@@ -72,7 +105,6 @@ export default function Home() {
             Recomendado
           </Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={handleTodo}>
           <Text
             style={[
@@ -83,7 +115,6 @@ export default function Home() {
             Todo
           </Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={handleCerca}>
           <Text
             style={[
@@ -94,47 +125,60 @@ export default function Home() {
             Cerca
           </Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={handleOpciones}>
           <Icon name="options-outline" size={20} />
         </TouchableOpacity>
       </View>
-
       {/* Tarjeta de producto */}
-      <View style={styles.card}>
-        <Image style={styles.productImage} />
-        <View style={styles.textContainer}>
-          <Text style={styles.productTitle}>Guitarra acústica</Text>
-          <Text style={styles.productCategory}>Instrumentos Musicales</Text>
+      {articulos.length > 0 && (
+        <View style={styles.card}>
+          <Image
+            source={{
+              uri: `${
+                articulos[indiceArticulo].fotoarticulo
+              }?t=${new Date().getTime()}`,
+            }}
+            style={styles.productImage}
+          />
+          <View style={styles.textContainer}>
+            <Text style={styles.productTitle}>
+              {articulos[indiceArticulo].nombrearticulo}
+            </Text>
+            <Text style={styles.productCategory}>
+              {articulos[indiceArticulo].detallearticulo}
+            </Text>
+          </View>
         </View>
-      </View>
-
+      )}
       {/* Botones */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.smallButton}>
+        <TouchableOpacity
+          style={styles.smallButton}
+          onPress={() => {
+            setIndiceArticulo((prev) => (prev + 1) % articulos.length);
+          }}
+        >
           <Icon name="close-outline" size={30} color="#000" />
         </TouchableOpacity>
-
         <TouchableOpacity
           onPress={() => {
             navigation.replace("VerArticulos", {
               usuario,
               token,
-              selectedImage
+              selectedImage,
             });
           }}
           style={styles.bigButton}
         >
           {selectedImage ? (
             <Image
-            source={{ uri: `${selectedImage}?t=${new Date().getTime()}` }}
-            style={styles.imageIcon}
-          />
+              source={{ uri: `${selectedImage}?t=${imageSelectTimestamp}` }}
+              style={styles.imageIcon}
+            />
           ) : (
             <Icon name="download-outline" size={30} color="#fff" />
           )}
         </TouchableOpacity>
-
         <TouchableOpacity style={styles.smallButton}>
           <Icon name="shuffle-outline" size={30} color="#000" />
         </TouchableOpacity>
@@ -230,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-   imageIcon: {
+  imageIcon: {
     width: 100,
     height: 100,
     borderRadius: 50,
