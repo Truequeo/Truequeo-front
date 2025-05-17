@@ -33,8 +33,7 @@ export default function Home() {
     setFiltroSeleccionado("Cerca");
   };
 
-  const handleOpciones = () => {
-  };
+  const handleOpciones = () => {};
 
   const isFocused = useIsFocused();
   const [selectedImage, setSelectedImage] = useState(null);
@@ -67,7 +66,6 @@ export default function Home() {
         .then((response) => {
           setArticulos(response.data);
           setIndiceArticulo(0);
-          console.log(articulos);
         });
     }
     if (isFocused && filtroSeleccionado === "Cerca") {
@@ -76,7 +74,6 @@ export default function Home() {
         .then((response) => {
           setArticulos(response.data);
           setIndiceArticulo(0);
-          console.log(articulos);
         });
     }
   }, [isFocused, route.params?.selectedImagen, filtroSeleccionado]);
@@ -91,7 +88,17 @@ export default function Home() {
           />
         </TouchableOpacity>
         <Text style={styles.title}>TRUEQUEO</Text>
-        <Icon name="notifications-off-outline" size={45} color="black" />
+        <Icon
+          onPress={() => {
+            navigation.navigate("ListaMensajes", {
+              usuario,
+              token,
+            });
+          }}
+          name="notifications-off-outline"
+          size={45}
+          color="black"
+        />
       </View>
       {/* Filtros */}
       <View style={styles.filters}>
@@ -179,7 +186,16 @@ export default function Home() {
             <Icon name="download-outline" size={30} color="#fff" />
           )}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.smallButton}>
+        <TouchableOpacity
+          onPress={() => {
+            navigation.navigate("Chat", {
+              usuario,
+              token,
+              articulo: articulos[indiceArticulo],
+            });
+          }}
+          style={styles.smallButton}
+        >
           <Icon name="shuffle-outline" size={30} color="#000" />
         </TouchableOpacity>
       </View>

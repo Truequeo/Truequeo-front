@@ -362,7 +362,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   itemContainer: {
-    width: "48%",
+     width: 150, 
+    height: 150,
     aspectRatio: 1,
     margin: "1%",
     borderRadius: 20,
@@ -390,7 +391,8 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   addNew: {
-    width: "48%",
+     width: 150, 
+    height: 150,
     aspectRatio: 1,
     margin: "1%",
     backgroundColor: "#e0e0e0",

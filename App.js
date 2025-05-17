@@ -8,6 +8,8 @@ import Profile from "./Components/Profile";
 import SplashScreen from "./Components/SplashScreen"; 
 import VerArticulos from "./Components/VerArticulos";
 import AnadirProducto from "./Components/AnadirProducto";
+import Chat from "./Components/Chat";
+import ListaMensajes from "./Components/ListaMensajes";
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +24,8 @@ export default function App() {
         <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
         <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
         <Stack.Screen name="VerArticulos" component={VerArticulos} options={{ headerShown: false }} />
+        <Stack.Screen name="Chat" component={Chat} options={{ headerShown: false }} />
+        <Stack.Screen name="ListaMensajes" component={ListaMensajes} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
