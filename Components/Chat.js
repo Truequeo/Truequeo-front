@@ -35,31 +35,36 @@ export default function Chat() {
 
   useEffect(() => {
     if (articulo && usuario) {
-     console.log("entra")
+      console.log("entra");
       obtenerMensajes();
     }
   }, [articulo, usuario]);
 
   const obtenerMensajes = () => {
-  axios
-    .get(
-      `${urlBackend}chat/mensajes/${articulo.codarticulo}/${usuario.codusuario}/${articulo.codusuario || articulo.codreceptor}`
-    )
-    .then((response) => {
-      console.log("aca");
-      console.log(response.data);
-      const mensajesRecibidos = response.data.map((mensaje) => ({
-        id: mensaje.id.toString(),
-        texto: mensaje.texto,
-        sender: mensaje.codremitente === usuario.codusuario ? "me" : "other",
-      }));
-      setMessages(mensajesRecibidos);
-    })
-    .catch((error) => {
-      console.error("❌ Error al obtener mensajes:", error.message);
-      console.log("🔎 URL utilizada:", `${urlBackend}/chat/mensajes/${articulo.codarticulo}/${usuario.codusuario}/${articulo.codusuario}`);
-    });
-};
+    axios
+      .get(
+        `${urlBackend}chat/mensajes/${articulo.codarticulo}/${
+          usuario.codusuario
+        }/${articulo.codusuario || articulo.codreceptor}`
+      )
+      .then((response) => {
+        console.log("aca");
+        console.log(response.data);
+        const mensajesRecibidos = response.data.map((mensaje) => ({
+          id: mensaje.id.toString(),
+          texto: mensaje.texto,
+          sender: mensaje.codremitente === usuario.codusuario ? "me" : "other",
+        }));
+        setMessages(mensajesRecibidos);
+      })
+      .catch((error) => {
+        console.error("❌ Error al obtener mensajes:", error.message);
+        console.log(
+          "🔎 URL utilizada:",
+          `${urlBackend}/chat/mensajes/${articulo.codarticulo}/${usuario.codusuario}/${articulo.codusuario}`
+        );
+      });
+  };
 
   const renderItem = ({ item }) => (
     <View
@@ -108,11 +113,12 @@ export default function Chat() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 50,
+    paddingHorizontal: 15,
     backgroundColor: "#fff",
   },
   header: {
     height: 80,
-    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

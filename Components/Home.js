@@ -188,11 +188,13 @@ export default function Home() {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => {
-            navigation.navigate("Chat", {
-              usuario,
-              token,
-              articulo: articulos[indiceArticulo],
-            });
+            if (selectedArticulo) {
+              navigation.navigate("Chat", {
+                usuario,
+                token,
+                articulo: articulos[indiceArticulo],
+              });
+            }
           }}
           style={styles.smallButton}
         >

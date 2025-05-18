@@ -116,6 +116,7 @@ export default function AnadirProducto() {
         }
       );
       const usuarioActualizado = response.data;
+      console.log(usuarioActualizado)
       navigation.navigate("Home", { usuario: usuarioActualizado, token });
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,

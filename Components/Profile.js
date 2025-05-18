@@ -17,6 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import { urlBackend } from "./VariablesEntorno";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Profile() {
   const route = useRoute();
@@ -41,7 +42,7 @@ export default function Profile() {
               { name: "Home", params: { usuario: usuarioFinal, token } },
             ],
           });
-          return true; 
+          return true;
         } else {
           setVercomentarios(false);
           return true;
@@ -55,11 +56,24 @@ export default function Profile() {
     }, [verComentarios, actualizarUser])
   );
 
+
+  const logout = async () => {
+    try {
+      // Borrar datos del almacenamiento
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("codUsuario");
+
+      // Redirigir al Login
+      navigation.replace("Login");
+    } catch (error) {
+      console.error("Error cerrando sesión:", error);
+    }
+  };
+
   useEffect(() => {
     if (usuario?.fotoperfil) {
       setFotoperfil(`${usuario.fotoperfil}?t=${Date.now()}`);
     }
-    
   }, [usuario?.fotoperfil]);
 
   const seleccionarImagen = async () => {
@@ -242,6 +256,19 @@ export default function Profile() {
                   {editando ? "Guardar" : "Editar Perfil"}
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={logout}
+              >
+                <Icon
+                  name={editando ? "save-outline" : "create-outline"}
+                  size={20}
+                  color="#fff"
+                />
+                <Text style={styles.editButtonText}>
+                  Cerrar sesion
+                </Text>
+              </TouchableOpacity>
               {/* ★★★★★★★★★★ Rating de usuario */}
               <TouchableOpacity
                 onPress={() => setVercomentarios(true)}
@@ -362,7 +389,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   itemContainer: {
-     width: 150, 
+    width: 150,
     height: 150,
     aspectRatio: 1,
     margin: "1%",
@@ -391,7 +418,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   addNew: {
-     width: 150, 
+    width: 150,
     height: 150,
     aspectRatio: 1,
     margin: "1%",

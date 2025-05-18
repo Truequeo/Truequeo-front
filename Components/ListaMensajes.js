@@ -10,6 +10,7 @@ import {
 import { urlBackend } from "./VariablesEntorno";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import axios from "axios";
+import Icon from "react-native-vector-icons/Ionicons";
 
 export default function ListaMensajes() {
   const route = useRoute();
@@ -39,7 +40,8 @@ export default function ListaMensajes() {
     return (
       <TouchableOpacity
         style={styles.chatItem}
-        onPress={() =>navigation.navigate("Chat", {
+        onPress={() =>
+          navigation.navigate("Chat", {
             usuario,
             articulo: item,
           })
@@ -66,6 +68,16 @@ export default function ListaMensajes() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity>
+          <Image
+            source={{ uri: usuario.fotoperfil }}
+            style={styles.profileImage}
+          />
+        </TouchableOpacity>
+        <Text style={styles.title}>TRUEQUEO</Text>
+        <Icon name="close-outline" size={45} color="#000" />
+      </View>
       <FlatList
         data={mensajes}
         keyExtractor={(item, index) => index.toString()}
@@ -78,7 +90,26 @@ export default function ListaMensajes() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 50,
+    paddingHorizontal: 20,
     backgroundColor: "#fff",
+  },
+  header: {
+    height: 80,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  profileImage: {
+    width: 65,
+    height: 65,
+    borderRadius: 35,
+    borderWidth: 2,
+    borderColor: "#a864ff",
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: "bold",
   },
   chatItem: {
     flexDirection: "row",
