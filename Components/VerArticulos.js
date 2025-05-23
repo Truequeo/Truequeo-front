@@ -23,8 +23,8 @@ export default function VerArticulos() {
   useFocusEffect(
     React.useCallback(() => {
       const backAction = () => {
-          console.log(selectedImage)
-        navigation.replace("Home",{
+        console.log(selectedImage);
+        navigation.replace("Home", {
           usuario,
           token,
           selectedImagen: selectedImage,
@@ -37,7 +37,7 @@ export default function VerArticulos() {
         backAction
       );
       return () => backHandler.remove();
-    }, [navigation]) 
+    }, [navigation])
   );
   const renderItem = ({ item }) => {
     if (item.isAddButton) {
@@ -64,7 +64,10 @@ export default function VerArticulos() {
           });
         }}
       >
-        <Image source={{ uri: item.fotoarticulo }} style={styles.image} />
+        <Image
+          source={{ uri: `${item.fotoarticulo}/1.jpeg` }}
+          style={styles.image}
+        />
         {item.etiquetas && item.etiquetas.length > 1 && (
           <View style={styles.overlay}>
             <Text style={styles.overlayText}>+{item.etiquetas.length - 1}</Text>

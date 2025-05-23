@@ -59,11 +59,8 @@ export default function Profile() {
 
   const logout = async () => {
     try {
-      // Borrar datos del almacenamiento
       await AsyncStorage.removeItem("token");
       await AsyncStorage.removeItem("codUsuario");
-
-      // Redirigir al Login
       navigation.replace("Login");
     } catch (error) {
       console.error("Error cerrando sesión:", error);
@@ -170,7 +167,7 @@ export default function Profile() {
           });
         }}
       >
-        <Image source={{ uri: item.fotoarticulo }} style={styles.image} />
+        <Image source={{ uri: item.fotoarticulo + "/1.jpeg" }} style={styles.image} />
         {item.etiquetas && item.etiquetas.length > 1 && (
           <View style={styles.overlay}>
             <Text style={styles.overlayText}>+{item.etiquetas.length - 1}</Text>
@@ -223,7 +220,7 @@ export default function Profile() {
                     placeholder="Ubicación"
                   />
                 ) : (
-                  <Text style={styles.infoText}>{ubicacion}</Text>
+                  <Text style={styles.infoText}>{}</Text>
                 )}
               </View>
               {/* Fecha de nacimiento */}

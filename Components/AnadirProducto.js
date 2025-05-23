@@ -21,6 +21,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
 import { BackHandler } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 
 export default function AnadirProducto() {
   const route = useRoute();
@@ -29,8 +30,7 @@ export default function AnadirProducto() {
   const navigation = useNavigation();
   const [nombrearticulo, setNombreArticulo] = useState("");
   const [detallearticulo, setDetalleArticulo] = useState("");
-  const [estadoarticulo, setEstadoArticulo] = useState("activo");
-  const [fotoarticulo, setFotoArticulo] = useState(null); 
+  const [estadoarticulo, setEstadoArticulo] = useState("");
   const [categorias, setCategorias] = useState("");
 
   useFocusEffect(
@@ -61,34 +61,46 @@ export default function AnadirProducto() {
     }, [navigation])
   );
 
+  const [fotosArticulo, setFotosArticulo] = useState([]);
+
   const seleccionarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permiso.status !== "granted") {
       Alert.alert("Permiso requerido", "Se necesita acceso a tus fotos");
       return;
     }
+
     const resultado = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
+      allowsMultipleSelection: true,
       quality: 1,
+      selectionLimit: 3,
     });
-    if (!resultado.cancelled) {
-      setFotoArticulo(resultado.assets[0].uri);
+
+    if (!resultado.canceled) {
+      const nuevasImagenes = resultado.assets.map((asset) => asset.uri);
+      setFotosArticulo(nuevasImagenes.slice(0, 3));
     }
   };
 
   const enviarProducto = async () => {
-    if (!fotoarticulo) {
-      Alert.alert("Imagen faltante", "Por favor selecciona una imagen");
+    if (fotosArticulo.length === 0) {
+      Alert.alert(
+        "Imagen faltante",
+        "Por favor selecciona al menos una imagen"
+      );
       return;
     }
+
     const generarCodigoArticulo = () => {
       const timestamp = Date.now().toString(36);
       const random = Math.random().toString(36).substring(2, 6);
       return `ART-${timestamp}-${random}`.toUpperCase();
     };
+
     const codarticulo = generarCodigoArticulo();
     const formData = new FormData();
+
     formData.append("codarticulo", codarticulo);
     formData.append("codusuario", codusuario);
     formData.append("nombrearticulo", nombrearticulo);
@@ -98,13 +110,17 @@ export default function AnadirProducto() {
       "categorias",
       categorias.split(",").map((c) => c.trim())
     );
-    const fileName = fotoarticulo.split("/").pop();
-    const fileType = fileName.split(".").pop();
-    formData.append("fotoarticulo", {
-      uri: fotoarticulo,
-      name: fileName,
-      type: `image/${fileType}`,
+
+    fotosArticulo.forEach((uri, index) => {
+      const fileName = uri.split("/").pop();
+      const fileType = fileName.split(".").pop();
+      formData.append("fotoarticulo", {
+        uri,
+        name: fileName,
+        type: `image/${fileType}`,
+      });
     });
+
     try {
       const response = await axios.post(
         urlBackend + "articulo/createArticulo",
@@ -116,19 +132,15 @@ export default function AnadirProducto() {
         }
       );
       const usuarioActualizado = response.data;
-      console.log(usuarioActualizado)
       navigation.navigate("Home", { usuario: usuarioActualizado, token });
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,
         title: "Artículo creado",
         textBody: "Se creó el artículo correctamente",
         button: "Aceptar",
-        onPressButton: () => {
-          Dialog.hide();
-        },
       });
     } catch (error) {
-      console.error("Error al registrar artículo:", error.stack);
+      console.error("Error al registrar artículo:", error);
       Dialog.show({
         type: ALERT_TYPE.DANGER,
         title: "Error",
@@ -161,17 +173,27 @@ export default function AnadirProducto() {
         value={categorias}
         onChangeText={setCategorias}
       />
-      <View style={styles.containerImagen}>
-        {fotoarticulo ? (
-          <Image
-            source={{ uri: fotoarticulo }}
-            style={styles.imagen}
-            resizeMode="cover"
-          />
-        ) : (
-          <Text>No se ha seleccionado imagen</Text>
-        )}
+      <Text style={styles.label}>Estado del artículo</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={estadoarticulo}
+          onValueChange={(itemValue) => setEstadoArticulo(itemValue)}
+          mode="dropdown"
+        >
+          <Picker.Item label="Seleccionar" value="" />
+          <Picker.Item label="Nuevo" value="Nuevo" />
+          <Picker.Item label="Seminuevo" value="Seminuevo" />
+          <Picker.Item label="Viejo" value="Viejo" />
+        </Picker>
       </View>
+      <View style={styles.containerImagen}>
+        <View style={styles.imagenGrid}>
+          {fotosArticulo.map((uri, index) => (
+            <Image key={index} source={{ uri }} style={styles.imagen} />
+          ))}
+        </View>
+      </View>
+
       <View style={styles.containerBotones}>
         <Button title="Seleccionar imagen" onPress={seleccionarImagen} />
         <View style={{ height: 10 }} />
@@ -205,19 +227,40 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   containerImagen: {
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: "#e0e0e0",
-    height: 200,
+    minHeight: 200,
     borderRadius: 10,
     marginBottom: 30,
+    padding: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imagenGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10, 
   },
   imagen: {
-    width: 150,
-    height: 150,
+    width: 100,
+    height: 100,
     borderRadius: 10,
+    margin: 5,
   },
+
   containerBotones: {
     justifyContent: "center",
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+    fontWeight: "bold",
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    marginBottom: 15,
   },
 });

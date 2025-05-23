@@ -19,6 +19,7 @@ import {
 } from "react-native-alert-notification";
 import { urlBackend } from "./VariablesEntorno";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 
 export default function Register() {
   const [nombreusuario, setNombreUsuario] = useState("");
@@ -52,6 +53,22 @@ export default function Register() {
     setShowDatePicker(Platform.OS === "ios");
     setFechaNacimientoUsuario(currentDate);
   };
+const obtenerUbicacionActual = async () => {
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== "granted") {
+    Dialog.show({
+      type: ALERT_TYPE.WARNING,
+      title: "Permiso denegado",
+      textBody: "Se requiere permiso para acceder a la ubicación",
+      button: "Aceptar",
+    });
+    return;
+  }
+
+  const location = await Location.getCurrentPositionAsync({});
+  const { latitude, longitude } = location.coords;
+  setUbicacionArticulo(`${latitude},${longitude}`);
+};
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "";
@@ -118,7 +135,6 @@ export default function Register() {
       const { usuario, token } = response.data;
       await AsyncStorage.setItem("token", token);
       await AsyncStorage.setItem("codUsuario", usuario.codusuario);
-
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,
         title: "Usuario creado",
@@ -156,12 +172,13 @@ export default function Register() {
         onChangeText={setCelularUsuario}
         style={styles.input}
       />
-      <TextInput
-        placeholder="Ubicación del artículo"
-        value={ubicacionarticulo}
-        onChangeText={setUbicacionArticulo}
-        style={styles.input}
-      />
+      <TouchableOpacity onPress={obtenerUbicacionActual} style={styles.locationButton}>
+  <Text style={styles.locationButtonText}>Obtener ubicación actual</Text>
+</TouchableOpacity>
+{ubicacionarticulo ? (
+  <Text style={styles.locationText}>Ubicación: {ubicacionarticulo}</Text>
+) : null}
+
       <TextInput
         onPress={() => setShowDatePicker(true)}
         style={styles.datePickerButton}
@@ -248,5 +265,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     textAlign: "center",
     fontWeight: "bold",
-  },
+  },locationButton: {
+  backgroundColor: "#007bff",
+  padding: 12,
+  borderRadius: 5,
+  marginBottom: 15,
+},
+locationButtonText: {
+  color: "#fff",
+  textAlign: "center",
+},
+locationText: {
+  textAlign: "center",
+  marginBottom: 15,
+  color: "#333",
+},
+
 });
