@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import { urlBackend } from "./VariablesEntorno";
-import axios from "axios";
+
+import { getUserDataWithToken } from "../services/apiService";
 
 const SplashScreen = () => {
   const navigation = useNavigation();
@@ -15,17 +15,17 @@ const SplashScreen = () => {
         const codUsuario = await AsyncStorage.getItem("codUsuario");
 
         if (token && codUsuario) {
-          const response = await axios.get(
-            `${urlBackend}user/getUser/${codUsuario}`
-          );
-          const usuario = response.data;
-          console.log(usuario)
+          const usuario = await getUserDataWithToken(codUsuario, token);
+          console.log("Usuario autenticado:", usuario);
           navigation.replace("Home", { usuario, token });
         } else {
           navigation.replace("Login");
         }
       } catch (error) {
-        console.error("Error autenticando:", error);
+        console.error(
+          "Error en la autenticación o al obtener datos del usuario:",
+          error
+        );
         navigation.replace("Login");
       }
     };
@@ -34,16 +34,19 @@ const SplashScreen = () => {
   }, []);
 
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <ActivityIndicator size="large" />
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#0000ff" />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+});
 
 export default SplashScreen;

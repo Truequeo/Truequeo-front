@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ export default function VerArticulos() {
   useFocusEffect(
     React.useCallback(() => {
       const backAction = () => {
-        console.log(selectedImage);
+        console.log("selectedImage en BackHandler:", selectedImage);
         navigation.replace("Home", {
           usuario,
           token,
@@ -36,9 +36,11 @@ export default function VerArticulos() {
         "hardwareBackPress",
         backAction
       );
+
       return () => backHandler.remove();
-    }, [navigation])
+    }, [navigation, usuario, token, selectedImage])
   );
+
   const renderItem = ({ item }) => {
     if (item.isAddButton) {
       return (
@@ -55,7 +57,7 @@ export default function VerArticulos() {
       <TouchableOpacity
         style={styles.itemContainer}
         onPress={() => {
-          console.log(item);
+          console.log("Artículo seleccionado:", item);
           navigation.replace("Home", {
             usuario,
             token,
@@ -93,7 +95,9 @@ export default function VerArticulos() {
       <FlatList
         data={[...usuario.articulos, { isAddButton: true }]}
         renderItem={renderItem}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item, index) =>
+          item.idarticulo ? item.idarticulo.toString() : `add-button-${index}`
+        }
         numColumns={2}
         contentContainerStyle={styles.grid}
       />
@@ -130,13 +134,13 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   itemContainer: {
-    width: "48%",
-    aspectRatio: 1,
-    margin: "1%",
+    width: "48%", // Aproximadamente la mitad de la pantalla menos los márgenes
+    aspectRatio: 1, // Hace que el alto sea igual al ancho para una cuadrícula uniforme
+    margin: "1%", // Pequeño margen entre los items
     borderRadius: 20,
-    overflow: "hidden",
+    overflow: "hidden", // Para asegurar que el borderRadius se aplique correctamente a la imagen
     position: "relative",
-    backgroundColor: "#000",
+    backgroundColor: "#000", // Color de fondo si la imagen no carga
   },
   image: {
     width: "100%",
@@ -150,7 +154,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    flexDirection: "row",
+    flexDirection: "row", // Para alinear texto e iconos si los hubiera
     alignItems: "center",
   },
   overlayText: {

@@ -8,36 +8,43 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import axios from "axios";
-import { useRoute } from "@react-navigation/native";
-import { urlBackend } from "./VariablesEntorno";
+import {
+  useRoute,
+  useNavigation,
+  useFocusEffect,
+} from "@react-navigation/native";
 import {
   ALERT_TYPE,
   Dialog,
   AlertNotificationRoot,
 } from "react-native-alert-notification";
-import { useNavigation } from "@react-navigation/native";
-import { useFocusEffect } from "@react-navigation/native";
 import { BackHandler } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import Icon from "react-native-vector-icons/Ionicons";
+import { createNewArticle } from "../services/apiService";
 
 export default function AnadirProducto() {
   const route = useRoute();
   const { usuario, token } = route.params;
   const codusuario = usuario.codusuario;
   const navigation = useNavigation();
+
   const [nombrearticulo, setNombreArticulo] = useState("");
   const [detallearticulo, setDetalleArticulo] = useState("");
   const [estadoarticulo, setEstadoArticulo] = useState("");
   const [categorias, setCategorias] = useState("");
 
+  const [fotosArticulo, setFotosArticulo] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
         Alert.alert(
-          "Confirmación",
+          "Salir sin guardar",
           "¿Estás seguro de que deseas salir sin registrar el artículo?",
           [
             {
@@ -58,148 +65,200 @@ export default function AnadirProducto() {
         onBackPress
       );
       return () => backHandler.remove();
-    }, [navigation])
+    }, [navigation, usuario, token])
   );
-
-  const [fotosArticulo, setFotosArticulo] = useState([]);
 
   const seleccionarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permiso.status !== "granted") {
-      Alert.alert("Permiso requerido", "Se necesita acceso a tus fotos");
+      Alert.alert(
+        "Permiso requerido",
+        "Se necesita acceso a tus fotos para seleccionar imágenes del artículo."
+      );
       return;
     }
 
     const resultado = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: 1,
+      quality: 0.7,
       selectionLimit: 4,
     });
 
     if (!resultado.canceled) {
-      const nuevasImagenes = resultado.assets.map((asset) => asset.uri);
-      setFotosArticulo(nuevasImagenes.slice(0, 4));
+      const nuevasImagenes = resultado.assets
+        .map((asset) => asset.uri)
+        .slice(0, 4);
+      setFotosArticulo(nuevasImagenes);
     }
   };
 
-  const enviarProducto = async () => {
+  const handleEnviarProducto = async () => {
     if (fotosArticulo.length === 0) {
       Alert.alert(
-        "Imagen faltante",
-        "Por favor selecciona al menos una imagen"
+        "Imágenes requeridas",
+        "Por favor selecciona al menos una imagen para tu artículo."
+      );
+      return;
+    }
+    if (
+      !nombrearticulo.trim() ||
+      !detallearticulo.trim() ||
+      !estadoarticulo.trim() ||
+      !categorias.trim()
+    ) {
+      Alert.alert(
+        "Campos vacíos",
+        "Por favor, completa todos los campos del artículo."
       );
       return;
     }
 
-    const generarCodigoArticulo = () => {
-      const timestamp = Date.now().toString(36);
-      const random = Math.random().toString(36).substring(2, 6);
-      return `ART-${timestamp}-${random}`.toUpperCase();
+    setLoading(true);
+
+    const articleData = {
+      nombrearticulo,
+      detallearticulo,
+      estadoarticulo,
+      categorias,
     };
 
-    const codarticulo = generarCodigoArticulo();
-    const formData = new FormData();
-
-    formData.append("codarticulo", codarticulo);
-    formData.append("codusuario", codusuario);
-    formData.append("nombrearticulo", nombrearticulo);
-    formData.append("detallearticulo", detallearticulo);
-    formData.append("estadoarticulo", estadoarticulo);
-    formData.append(
-      "categorias",
-      categorias.split(",").map((c) => c.trim())
-    );
-
-    fotosArticulo.forEach((uri, index) => {
-      const fileName = uri.split("/").pop();
-      const fileType = fileName.split(".").pop();
-      formData.append("fotoarticulo", {
-        uri,
-        name: fileName,
-        type: `image/${fileType}`,
-      });
-    });
-
     try {
-      const response = await axios.post(
-        urlBackend + "articulo/createArticulo",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+      const updatedUser = await createNewArticle(
+        articleData,
+        fotosArticulo,
+        codusuario
       );
-      const usuarioActualizado = response.data;
-      navigation.navigate("Home", { usuario: usuarioActualizado, token });
+
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,
-        title: "Artículo creado",
-        textBody: "Se creó el artículo correctamente",
+        title: "Artículo Creado",
+        textBody: "Tu artículo se registró correctamente.",
         button: "Aceptar",
+        onPressButton: () => {
+          Dialog.hide();
+          navigation.replace("Home", { usuario: updatedUser, token });
+        },
       });
+      setNombreArticulo("");
+      setDetalleArticulo("");
+      setEstadoArticulo("");
+      setCategorias("");
+      setFotosArticulo([]);
     } catch (error) {
-      console.error("Error al registrar artículo:", error);
+      console.error("Error al registrar artículo desde el componente:", error);
+      const errorMessage =
+        error.response?.data?.error ||
+        "No se pudo registrar el artículo. Intenta de nuevo.";
       Dialog.show({
         type: ALERT_TYPE.DANGER,
         title: "Error",
-        textBody: "Error al registrar el artículo",
+        textBody: errorMessage,
         button: "Aceptar",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.containerTitulo}>
-        <Text style={styles.textoTitulo}>Añadir producto</Text>
-      </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre del artículo"
-        value={nombrearticulo}
-        onChangeText={setNombreArticulo}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Detalle del artículo"
-        value={detallearticulo}
-        onChangeText={setDetalleArticulo}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Categorías (separadas por coma)"
-        value={categorias}
-        onChangeText={setCategorias}
-      />
-      <Text style={styles.label}>Estado del artículo</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={estadoarticulo}
-          onValueChange={(itemValue) => setEstadoArticulo(itemValue)}
-          mode="dropdown"
-        >
-          <Picker.Item label="Seleccionar" value="" />
-          <Picker.Item label="Nuevo" value="Nuevo" />
-          <Picker.Item label="Seminuevo" value="Seminuevo" />
-          <Picker.Item label="Viejo" value="Viejo" />
-        </Picker>
-      </View>
-      <View style={styles.containerImagen}>
-        <View style={styles.imagenGrid}>
-          {fotosArticulo.map((uri, index) => (
-            <Image key={index} source={{ uri }} style={styles.imagen} />
-          ))}
+    <AlertNotificationRoot>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.replace("Home", { usuario, token })}
+            style={styles.backButton}
+          >
+            <Icon name="arrow-back" size={30} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.textoTitulo}>Añadir producto</Text>
+          <View style={{ width: 30 }} />
         </View>
-      </View>
 
-      <View style={styles.containerBotones}>
-        <Button title="Seleccionar imagen" onPress={seleccionarImagen} />
-        <View style={{ height: 10 }} />
-        <Button title="Cargar producto" onPress={enviarProducto} />
-      </View>
-    </ScrollView>
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre del artículo"
+          placeholderTextColor="#888"
+          value={nombrearticulo}
+          onChangeText={setNombreArticulo}
+        />
+        <TextInput
+          style={styles.inputMultiline}
+          placeholder="Detalle del artículo"
+          placeholderTextColor="#888"
+          value={detallearticulo}
+          onChangeText={setDetalleArticulo}
+          multiline
+          numberOfLines={4}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Categorías (separadas por coma)"
+          placeholderTextColor="#888"
+          value={categorias}
+          onChangeText={setCategorias}
+        />
+        <Text style={styles.label}>Estado del artículo:</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={estadoarticulo}
+            onValueChange={(itemValue) => setEstadoArticulo(itemValue)}
+            mode="dropdown"
+            itemStyle={styles.pickerItem}
+          >
+            <Picker.Item
+              label="Seleccionar estado"
+              value=""
+              style={styles.pickerPlaceholder}
+            />
+            <Picker.Item label="Nuevo" value="Nuevo" />
+            <Picker.Item label="Seminuevo" value="Seminuevo" />
+            <Picker.Item label="Usado" value="Usado" />{" "}
+          </Picker>
+        </View>
+
+        <TouchableOpacity
+          style={styles.selectImageButton}
+          onPress={seleccionarImagen}
+        >
+          <Text style={styles.selectImageButtonText}>
+            Seleccionar Fotos ({fotosArticulo.length}/4)
+          </Text>
+          <Icon
+            name="image-outline"
+            size={20}
+            color="#fff"
+            style={styles.selectImageIcon}
+          />
+        </TouchableOpacity>
+
+        <View style={styles.containerImagen}>
+          {fotosArticulo.length > 0 ? (
+            <View style={styles.imagenGrid}>
+              {fotosArticulo.map((uri, index) => (
+                <Image key={index} source={{ uri }} style={styles.imagen} />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.placeholderText}>
+              No hay imágenes seleccionadas.
+            </Text>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleEnviarProducto}
+          disabled={loading}
+        >
+          {loading ? (
+            <Text style={styles.submitButtonText}>Cargando...</Text>
+          ) : (
+            <Text style={styles.submitButtonText}>Publicar Artículo</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </AlertNotificationRoot>
   );
 }
 
@@ -209,26 +268,92 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     flexGrow: 1,
   },
-  containerTitulo: {
+  header: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "space-between",
+    marginBottom: 25,
+    paddingTop: 10, // Espacio superior para el safe area
+  },
+  backButton: {
+    padding: 5,
   },
   textoTitulo: {
     fontSize: 28,
     fontWeight: "bold",
+    color: "#333",
   },
   input: {
-    height: 40,
-    borderColor: "#ccc",
+    height: 50,
+    borderColor: "#ddd",
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    borderRadius: 10,
+    paddingHorizontal: 15,
     marginBottom: 15,
     backgroundColor: "#fff",
+    fontSize: 16,
+    color: "#333",
+  },
+  inputMultiline: {
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10, // Padding vertical para multilínea
+    marginBottom: 15,
+    backgroundColor: "#fff",
+    fontSize: 16,
+    color: "#333",
+    minHeight: 100, // Altura mínima para el área de texto
+    textAlignVertical: "top", // Para que el texto comience desde arriba
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: "600",
+    color: "#555",
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    marginBottom: 20,
+    overflow: "hidden", // Para que el borde redondeado se aplique al contenido
+  },
+  pickerItem: {
+    fontSize: 16,
+    color: "#333",
+  },
+  pickerPlaceholder: {
+    color: "#888", // Color para el texto del placeholder
+  },
+  selectImageButton: {
+    backgroundColor: "#a864ff",
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  selectImageButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginRight: 10,
+  },
+  selectImageIcon: {
+    color: "#fff",
   },
   containerImagen: {
     backgroundColor: "#e0e0e0",
-    minHeight: 200,
+    minHeight: 180, // Altura mínima un poco menor
     borderRadius: 10,
     marginBottom: 30,
     padding: 10,
@@ -239,28 +364,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 10, 
+    gap: 10, // Espacio entre imágenes
   },
   imagen: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    margin: 5,
+    width: 80, // Imágenes un poco más pequeñas para que quepan más en la fila
+    height: 80,
+    borderRadius: 8, // Bordes un poco menos redondeados
+    margin: 5, // Margen alrededor de cada imagen
   },
-
-  containerBotones: {
-    justifyContent: "center",
-  },
-  label: {
+  placeholderText: {
+    color: "#666",
     fontSize: 16,
-    marginBottom: 5,
-    fontWeight: "bold",
+    textAlign: "center",
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    backgroundColor: "#fff",
-    marginBottom: 15,
+  submitButton: {
+    backgroundColor: "#6a0dad", // Color de botón principal
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  submitButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });

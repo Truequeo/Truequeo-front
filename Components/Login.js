@@ -8,15 +8,14 @@ import {
   BackHandler,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import axios from "axios";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import {
   ALERT_TYPE,
   Dialog,
   AlertNotificationRoot,
 } from "react-native-alert-notification";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { urlBackend } from "./VariablesEntorno";
+
+import { sendVerificationCode, verifyLoginCode } from "../services/apiService";
 
 export default function Login() {
   const [celular, setCelular] = useState("");
@@ -31,6 +30,7 @@ export default function Login() {
       const backAction = () => {
         if (!mostrandoInputCelular) {
           setMostrandoInputCelular(true);
+          setCodigo("");
           return true;
         }
         return false;
@@ -43,12 +43,12 @@ export default function Login() {
     }, [mostrandoInputCelular])
   );
 
-  const enviarCodigo = () => {
+  const handleEnviarCodigo = async () => {
     if (!celular.trim()) {
       return Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Campo vacío",
-        textBody: "Por favor ingresa un número de celular",
+        textBody: "Por favor ingresa un número de celular.",
         button: "Aceptar",
       });
     }
@@ -56,91 +56,75 @@ export default function Login() {
       return Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Número inválido",
-        textBody: "El número debe tener 8 dígitos",
+        textBody: "El número debe tener 8 dígitos.",
         button: "Aceptar",
       });
     }
-    axios
-      .post(urlBackend`auth/enviarCodigo/+591${celular}`)
-      .then(() => {
-        setMostrandoInputCelular(false);
-        Dialog.show({
-          type: ALERT_TYPE.SUCCESS,
-          title: "Código Enviado",
-          textBody: "Se envió correctamente al número",
-          button: "Aceptar",
-        });
-      })
-      .catch((error) => {
-        const errorMsg =
-          error.response?.data?.error ||
-          "Error desconocido al enviar el código";
-        Dialog.show({
-          type: ALERT_TYPE.DANGER,
-          title: "Error",
-          textBody: errorMsg,
-          button: "Aceptar",
-        });
-        console.error("Error al enviar código:", error);
+
+    try {
+      await sendVerificationCode(celular);
+      setMostrandoInputCelular(false);
+      Dialog.show({
+        type: ALERT_TYPE.SUCCESS,
+        title: "Código Enviado",
+        textBody: "Se envió correctamente al número.",
+        button: "Aceptar",
       });
+    } catch (error) {
+      const errorMsg =
+        error.response?.data?.error || "Error desconocido al enviar el código.";
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: "Error",
+        textBody: errorMsg,
+        button: "Aceptar",
+      });
+      console.error("Error al enviar código:", error);
+    }
   };
 
-  const verificarCodigo = () => {
+  const handleVerificarCodigo = async () => {
     if (!codigo.trim()) {
       return Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Campo vacío",
-        textBody: "Por favor ingresa el código",
+        textBody: "Por favor ingresa el código.",
         button: "Aceptar",
       });
     }
-    axios
-      .post(urlBackend + "auth/verificarCodigo", {
-        phone: `+591${celular}`,
-        code: codigo,
-      })
-      .then(async (response) => {
-        const { usuario, token } = response.data;
-        if (!usuario) {
-          return Dialog.show({
-            type: ALERT_TYPE.DANGER,
-            title: "Error",
-            textBody: "No se encontró el usuario",
-            button: "Aceptar",
-          });
-        }
-        try {
-          await AsyncStorage.setItem("token", token);
-          await AsyncStorage.setItem("codUsuario", usuario.codUsuario);
-        } catch (err) {
-          console.error("Error guardando token:", err);
-        }
-        navigation.navigate("Home", { usuario, token });
-        Dialog.show({
-          type: ALERT_TYPE.SUCCESS,
-          title: "Código Verificado",
-          textBody: "Código correcto",
-          button: "Continuar",
-        });
-        setCodigo("");
-      })
-      .catch((error) => {
-        Dialog.show({
-          type: ALERT_TYPE.DANGER,
-          title: "Error",
-          textBody:
-            error.response?.data?.error || "Error al verificar el código",
-          button: "Aceptar",
-        });
-        console.error("Error en verificación:", error);
+
+    try {
+      const { usuario, token } = await verifyLoginCode(celular, codigo);
+      Dialog.show({
+        type: ALERT_TYPE.SUCCESS,
+        title: "Código Verificado",
+        textBody: "Código correcto.",
+        button: "Continuar",
+        onPressButton: () => {
+          Dialog.hide();
+          navigation.navigate("Home", { usuario, token });
+        },
       });
+      setCodigo("");
+    } catch (error) {
+      const errorMsg =
+        error.response?.data?.error || "Error al verificar el código.";
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: "Error",
+        textBody: errorMsg,
+        button: "Aceptar",
+      });
+      console.error("Error en verificación:", error);
+    }
   };
 
   const iniciarGoogle = () => {
     Dialog.show({
       type: ALERT_TYPE.DANGER,
       title: "Error",
-      textBody: "Próximamente",
+      textBody:
+        "La función de inicio de sesión con Google estará disponible próximamente.",
       button: "Aceptar",
     });
   };
@@ -154,28 +138,29 @@ export default function Login() {
             style={styles.input}
             onChangeText={setCelular}
             value={celular}
-            placeholder="Ingresa tu número"
+            placeholder="Ingresa tu número de celular"
             placeholderTextColor="#888"
             keyboardType="phone-pad"
+            maxLength={8}
           />
           <TouchableHighlight
-            underlayColor="#fff"
+            underlayColor="#6a0dad"
             onShowUnderlay={() => setIsPressed(true)}
             onHideUnderlay={() => setIsPressed(false)}
-            onPress={enviarCodigo}
+            onPress={handleEnviarCodigo}
             style={styles.botonInicio}
           >
             <Text
               style={[
                 styles.textoBoton,
-                { color: isPressed ? "#000" : "#fff" },
+                { color: isPressed ? "#fff" : "#fff" },
               ]}
             >
-              Iniciar sesión
+              Enviar código
             </Text>
           </TouchableHighlight>
           <TouchableHighlight
-            underlayColor="#fff"
+            underlayColor="#6a0dad"
             onShowUnderlay={() => setIsPressedG(true)}
             onHideUnderlay={() => setIsPressedG(false)}
             onPress={iniciarGoogle}
@@ -184,10 +169,10 @@ export default function Login() {
             <Text
               style={[
                 styles.textoBoton,
-                { color: isPressedG ? "#000" : "#fff" },
+                { color: isPressedG ? "#fff" : "#fff" },
               ]}
             >
-              Inicio con Google
+              Iniciar con Google
             </Text>
           </TouchableHighlight>
           <View style={styles.registerContainer}>
@@ -208,21 +193,22 @@ export default function Login() {
             style={styles.input}
             onChangeText={setCodigo}
             value={codigo}
-            placeholder="Ingresa el código"
+            placeholder="Ingresa el código de verificación"
             placeholderTextColor="#888"
             keyboardType="numeric"
+            maxLength={6}
           />
           <TouchableHighlight
-            underlayColor="#fff"
+            underlayColor="#6a0dad"
             onShowUnderlay={() => setIsPressed(true)}
             onHideUnderlay={() => setIsPressed(false)}
-            onPress={verificarCodigo}
+            onPress={handleVerificarCodigo}
             style={styles.botonInicio}
           >
             <Text
               style={[
                 styles.textoBoton,
-                { color: isPressed ? "#000" : "#fff" },
+                { color: isPressed ? "#fff" : "#fff" },
               ]}
             >
               Verificar código
@@ -239,46 +225,59 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
-    backgroundColor: "#fff",
+    backgroundColor: "#f0f2f5", // Fondo más suave
   },
   input: {
     height: 50,
-    borderColor: "#ccc",
+    borderColor: "#d1d5db", // Borde más claro
     borderWidth: 1,
     marginBottom: 20,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    paddingHorizontal: 15, // Más padding
+    borderRadius: 10, // Bordes más redondeados
+    fontSize: 16,
+    color: "#333",
+    backgroundColor: "#fff", // Fondo blanco
   },
   botonInicio: {
-    backgroundColor: "#000",
+    backgroundColor: "#6a0dad", // Un púrpura vibrante
     padding: 15,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: "#000",
+    borderRadius: 30, // Más redondeado
+    borderWidth: 0, // Quitamos el borde para un look más moderno
+    elevation: 3, // Sombra para Android
+    shadowColor: "#000", // Sombra para iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   botonInicioG: {
-    backgroundColor: "#000",
+    backgroundColor: "#4285F4", // Azul de Google
     padding: 15,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: "#000",
-    marginTop: 20,
+    borderRadius: 30,
+    borderWidth: 0,
+    marginTop: 15, // Espacio entre botones
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   textoBoton: {
     color: "#fff",
     textAlign: "center",
     fontWeight: "bold",
+    fontSize: 18, // Texto más grande
   },
   registerContainer: {
     marginTop: 30,
     alignItems: "center",
   },
   registerText: {
-    fontSize: 14,
-    color: "#444",
+    fontSize: 15, // Un poco más grande
+    color: "#6b7280", // Color de texto más suave
   },
   registerLink: {
-    color: "#007BFF",
+    color: "#6a0dad", // Mismo púrpura que el botón principal
     fontWeight: "bold",
+    textDecorationLine: "underline",
   },
 });

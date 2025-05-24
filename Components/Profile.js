@@ -6,36 +6,37 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   BackHandler,
   FlatList,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import { useFocusEffect, useRoute } from "@react-navigation/native";
+import {
+  useFocusEffect,
+  useRoute,
+  useNavigation,
+} from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
-import axios from "axios";
-import { urlBackend } from "./VariablesEntorno";
-import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { updateProfile, logoutUser } from "../services/apiService";
 
 export default function Profile() {
   const route = useRoute();
   const { usuario, token } = route.params;
+  const navigation = useNavigation();
+
   const [editando, setEditando] = useState(false);
   const [nombre, setNombre] = useState(usuario?.nombreusuario || "");
-  const [celular] = useState(usuario?.celularusuario || "");
+  const [celular] = useState(usuario?.celularusuario || ""); // Celular no se edita, por eso no tiene setCelular
   const [ubicacion, setUbicacion] = useState(usuario?.ubicacionarticulo || "");
   const [fotoperfil, setFotoperfil] = useState(null);
-  const navigation = useNavigation();
-  const [actualizarUser, setActualizarUser] = useState(null);
+  const [actualizarUser, setActualizarUser] = useState(null); // Para almacenar el usuario actualizado
   const [verComentarios, setVercomentarios] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       const backAction = () => {
         if (!verComentarios) {
-          const usuarioFinal = actualizarUser ?? usuario;
+          const usuarioFinal = actualizarUser ?? usuario; // Usa el usuario actualizado si existe
           navigation.reset({
             index: 0,
             routes: [
@@ -44,7 +45,7 @@ export default function Profile() {
           });
           return true;
         } else {
-          setVercomentarios(false);
+          setVercomentarios(false); // Si estamos viendo comentarios, solo ocultarlos
           return true;
         }
       };
@@ -53,32 +54,31 @@ export default function Profile() {
         backAction
       );
       return () => backHandler.remove();
-    }, [verComentarios, actualizarUser])
+    }, [verComentarios, actualizarUser, usuario, token, navigation]) // Dependencias completas
   );
-
-
-  const logout = async () => {
-    try {
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("codUsuario");
-      navigation.replace("Login");
-    } catch (error) {
-      console.error("Error cerrando sesión:", error);
-    }
-  };
 
   useEffect(() => {
     if (usuario?.fotoperfil) {
-      setFotoperfil(`${usuario.fotoperfil}?t=${Date.now()}`);
+      setFotoperfil(`${usuario.fotoperfil}?t=${Date.now()}`); // Añade timestamp para evitar caché
     }
   }, [usuario?.fotoperfil]);
 
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      navigation.replace("Login"); // Redirige después de cerrar sesión
+    } catch (error) {
+      Alert.alert("Error", "No se pudo cerrar la sesión. Intenta de nuevo.");
+      console.error("Error al cerrar sesión desde Profile:", error);
+    }
+  };
+  // Función para seleccionar imagen de la galería
   const seleccionarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permiso.granted) {
       Alert.alert(
         "Permiso requerido",
-        "Necesitas permitir acceso a tus fotos."
+        "Necesitas permitir acceso a tus fotos para seleccionar una nueva foto de perfil."
       );
       return;
     }
@@ -90,12 +90,15 @@ export default function Profile() {
       setFotoperfil(resultado.assets[0].uri);
     }
   };
-  const guardarCambios = () => {
-    setEditando(false);
+
+  const handleGuardarCambios = async () => {
+    setEditando(false); // Sale del modo edición inmediatamente
+
     const formData = new FormData();
     formData.append("codusuario", usuario?.codusuario);
     formData.append("nombreusuario", nombre);
     formData.append("ubicacionarticulo", ubicacion);
+
     if (fotoperfil.startsWith("file://")) {
       const fileName = fotoperfil.split("/").pop();
       const fileType = fileName.split(".").pop();
@@ -107,18 +110,18 @@ export default function Profile() {
     } else {
       formData.append("fotoperfil", fotoperfil);
     }
-    axios
-      .put(urlBackend + "user/updateUser", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
-      .then((response) => {
-        setActualizarUser(response.data.usuario);
-      })
-      .catch((error) => {
-        console.error("Error al actualizar:", error);
-      });
+
+    try {
+      const updatedUser = await updateProfile(formData);
+      setActualizarUser(updatedUser);
+      Alert.alert("Éxito", "Perfil actualizado correctamente.");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "No se pudo actualizar el perfil. Intenta de nuevo."
+      );
+      console.error("Error al guardar cambios del perfil:", error);
+    }
   };
 
   const formatearFecha = (fecha) => {
@@ -143,6 +146,7 @@ export default function Profile() {
     const año = fechaObj.getFullYear();
     return `${dia} de ${mes} de ${año}`;
   };
+
   const renderItem = ({ item }) => {
     if (item.isAddButton) {
       return (
@@ -167,7 +171,10 @@ export default function Profile() {
           });
         }}
       >
-        <Image source={{ uri: item.fotoarticulo + "/1.jpeg" }} style={styles.image} />
+        <Image
+          source={{ uri: item.fotoarticulo + "/1.jpeg" }}
+          style={styles.image}
+        />
         {item.etiquetas && item.etiquetas.length > 1 && (
           <View style={styles.overlay}>
             <Text style={styles.overlayText}>+{item.etiquetas.length - 1}</Text>
@@ -176,6 +183,7 @@ export default function Profile() {
       </TouchableOpacity>
     );
   };
+
   return (
     <>
       {!verComentarios && (
@@ -193,7 +201,6 @@ export default function Profile() {
                   style={styles.profileImage}
                 />
               </TouchableOpacity>
-              {/* Nombre de usuario */}
               {editando ? (
                 <TextInput
                   style={styles.input}
@@ -204,26 +211,25 @@ export default function Profile() {
               ) : (
                 <Text style={styles.name}>{nombre}</Text>
               )}
-              {/* Celular */}
               <View style={styles.infoRow}>
                 <Icon name="call-outline" size={20} />
                 <Text style={styles.infoText}>{celular}</Text>
               </View>
-              {/* Ubicación */}
               <View style={styles.infoRow}>
-                <Icon name="location-outline" size={20} />
-                {editando ? (
-                  <TextInput
-                    style={styles.inputInline}
-                    value={ubicacion}
-                    onChangeText={setUbicacion}
-                    placeholder="Ubicación"
-                  />
-                ) : (
-                  <Text style={styles.infoText}>{}</Text>
-                )}
+                <View style={styles.infoRow}>
+                  <Icon name="location-outline" size={20} />
+                  {editando ? (
+                    <TextInput
+                      style={styles.inputInline}
+                      value={ubicacion}
+                      onChangeText={setUbicacion}
+                      placeholder="Ubicación"
+                    />
+                  ) : (
+                    <Text style={styles.infoText}>{ubicacion}</Text>
+                  )}
+                </View>
               </View>
-              {/* Fecha de nacimiento */}
               {usuario?.fechanacimiento && !editando && (
                 <View style={styles.infoRow}>
                   <Icon name="calendar-outline" size={20} />
@@ -232,17 +238,9 @@ export default function Profile() {
                   </Text>
                 </View>
               )}
-              {/* Botón Editar/Guardar */}
               <TouchableOpacity
                 style={styles.editButton}
-                onPress={async () => {
-                  if (editando) {
-                    await new Promise((resolve) => setTimeout(resolve, 3100));
-                    guardarCambios();
-                  } else {
-                    setEditando(true);
-                  }
-                }}
+                onPress={handleGuardarCambios}
               >
                 <Icon
                   name={editando ? "save-outline" : "create-outline"}
@@ -255,18 +253,11 @@ export default function Profile() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.editButton}
-                onPress={logout}
+                onPress={handleLogout}
               >
-                <Icon
-                  name={editando ? "save-outline" : "create-outline"}
-                  size={20}
-                  color="#fff"
-                />
-                <Text style={styles.editButtonText}>
-                  Cerrar sesion
-                </Text>
+                <Icon name={"log-out-outline"} size={20} color="#fff" />
+                <Text style={styles.editButtonText}>Cerrar Sesión</Text>
               </TouchableOpacity>
-              {/* ★★★★★★★★★★ Rating de usuario */}
               <TouchableOpacity
                 onPress={() => setVercomentarios(true)}
                 style={styles.ratingWrapper}
@@ -301,21 +292,21 @@ export default function Profile() {
                   })}
                 </View>
               </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Tus Artículos </Text>
             </View>
           }
-          data={[...usuario.articulos, { isAddButton: true }]}
+          data={[...(usuario.articulos || []), { isAddButton: true }]}
           renderItem={renderItem}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(item, index) =>
+            item.idarticulo ? item.idarticulo.toString() : `add-button-${index}`
+          }
           numColumns={2}
-          contentContainerStyle={styles.container}
+          contentContainerStyle={styles.grid}
         />
       )}
       {verComentarios && (
-        <View style={{ padding: 20 }}>
-          <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
-            Comentarios del usuario
-          </Text>
-          {/* Aquí podrías mapear una lista de comentarios si tienes */}
+        <View style={styles.commentsContainer}>
+          <Text style={styles.commentsTitle}>Comentarios del usuario</Text>
           <Text>📢 Aquí irán los comentarios...</Text>
         </View>
       )}
@@ -325,11 +316,11 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 20,
     alignItems: "center",
     paddingHorizontal: 16,
+    paddingTop: 20, // Ajuste para el espacio superior
+    paddingBottom: 20, // Ajuste para espacio inferior antes de la FlatList
   },
-
   profileImage: {
     width: 120,
     height: 120,
@@ -347,17 +338,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 15,
-    width: "100%",
+    width: "100%", // Ocupa todo el ancho
   },
   infoText: {
     fontSize: 16,
     marginLeft: 10,
+    flex: 1, // Para que el texto ocupe el espacio restante
   },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 10,
-    padding: 8,
+    padding: 10, // Un poco más de padding
     width: "100%",
     fontSize: 16,
     marginBottom: 10,
@@ -373,21 +365,33 @@ const styles = StyleSheet.create({
   editButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#444",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    backgroundColor: "#a864ff", // Usar un color más distintivo
+    paddingVertical: 12, // Más padding vertical
+    paddingHorizontal: 25, // Más padding horizontal
     borderRadius: 30,
-    marginTop: 30,
-    marginBottom: 30,
+    marginTop: 15, // Menos espacio entre botones
+    // marginBottom: 30, // Eliminado para más control con el marginTop
   },
   editButtonText: {
     color: "#fff",
     marginLeft: 10,
     fontSize: 16,
+    fontWeight: "bold", // Texto en negrita
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginTop: 30,
+    marginBottom: 15,
+    alignSelf: "flex-start", // Alineado a la izquierda
+    width: "100%",
+  },
+  grid: {
+    // paddingHorizontal: 16, // Ya está en el container principal, pero puede ser necesario aquí
+    justifyContent: "space-between", // Distribuye los items uniformemente
   },
   itemContainer: {
-    width: 150,
-    height: 150,
+    width: "48%", // 2 items por fila con 1% de margen a cada lado
     aspectRatio: 1,
     margin: "1%",
     borderRadius: 20,
@@ -415,8 +419,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   addNew: {
-    width: 150,
-    height: 150,
+    width: "48%",
     aspectRatio: 1,
     margin: "1%",
     backgroundColor: "#e0e0e0",
@@ -430,6 +433,7 @@ const styles = StyleSheet.create({
   },
   ratingWrapper: {
     alignItems: "center",
+    marginTop: 20,
     marginBottom: 15,
   },
   ratingValue: {
@@ -439,5 +443,15 @@ const styles = StyleSheet.create({
   },
   ratingContainer: {
     flexDirection: "row",
+  },
+  commentsContainer: {
+    flex: 1, // Para que ocupe el espacio disponible
+    padding: 20,
+    backgroundColor: "#fff",
+  },
+  commentsTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 15,
   },
 });
