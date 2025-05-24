@@ -130,6 +130,7 @@ export default function Home() {
             return;
           }
           const { coords } = await Location.getCurrentPositionAsync({});
+          console.log(coords)
           const response = await axios.get(
             urlBackend + "articulo/getArticuloCerca",
             {
@@ -145,6 +146,7 @@ export default function Home() {
           setArticulos(response.data);
           setOffsetCerca(limit);
           setIndiceArticulo(0);
+          console.table("obtiene" + articulos)
           console.log("obtiene " + response.data.length);
         } catch (error) {
           console.error("Error al obtener artículos 'Cerca':", error);

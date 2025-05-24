@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   Image,
+  ScrollView,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
@@ -20,6 +21,7 @@ import {
 import { urlBackend } from "./VariablesEntorno";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
+import { Button } from "react-native";
 
 export default function Register() {
   const [nombreusuario, setNombreUsuario] = useState("");
@@ -53,22 +55,22 @@ export default function Register() {
     setShowDatePicker(Platform.OS === "ios");
     setFechaNacimientoUsuario(currentDate);
   };
-const obtenerUbicacionActual = async () => {
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== "granted") {
-    Dialog.show({
-      type: ALERT_TYPE.WARNING,
-      title: "Permiso denegado",
-      textBody: "Se requiere permiso para acceder a la ubicación",
-      button: "Aceptar",
-    });
-    return;
-  }
+  const obtenerUbicacionActual = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Dialog.show({
+        type: ALERT_TYPE.WARNING,
+        title: "Permiso denegado",
+        textBody: "Se requiere permiso para acceder a la ubicación",
+        button: "Aceptar",
+      });
+      return;
+    }
 
-  const location = await Location.getCurrentPositionAsync({});
-  const { latitude, longitude } = location.coords;
-  setUbicacionArticulo(`${latitude},${longitude}`);
-};
+    const location = await Location.getCurrentPositionAsync({});
+    const { latitude, longitude } = location.coords;
+    setUbicacionArticulo(`${latitude},${longitude}`);
+  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "";
@@ -78,7 +80,7 @@ const obtenerUbicacionActual = async () => {
     return `${dia}/${mes}/${año}`;
   };
 
-  const registrarUsuario = async () => {
+  const siguiente = () => {
     if (
       !nombreusuario.trim() ||
       !celularusuario.trim() ||
@@ -94,7 +96,10 @@ const obtenerUbicacionActual = async () => {
       });
       return;
     }
+    setIntereses(true);
+  };
 
+  const registrarUsuario = async () => {
     const generarCodigoUsuario = () => {
       const timestamp = Date.now().toString(36);
       const random = Math.random().toString(36).substring(2, 6);
@@ -112,6 +117,7 @@ const obtenerUbicacionActual = async () => {
       "fechanacimientousuario",
       fechanacimientousuario.toISOString()
     );
+  formData.append("intereses", JSON.stringify(seleccionados));
 
     const fileName = fotoperfil.split("/").pop();
     const fileType = fileName.split(".").pop();
@@ -120,6 +126,7 @@ const obtenerUbicacionActual = async () => {
       name: fileName,
       type: `image/${fileType}`,
     });
+    console.log(seleccionados)
 
     try {
       const response = await axios.post(
@@ -131,7 +138,7 @@ const obtenerUbicacionActual = async () => {
           },
         }
       );
-
+      console.log(response.data)
       const { usuario, token } = response.data;
       await AsyncStorage.setItem("token", token);
       await AsyncStorage.setItem("codUsuario", usuario.codusuario);
@@ -155,56 +162,139 @@ const obtenerUbicacionActual = async () => {
       });
     }
   };
+  const [intereses, setIntereses] = useState(false);
+  const [seleccionados, setSeleccionados] = useState([]);
 
+  const toggleCategoria = (categoria) => {
+    setSeleccionados((prev) =>
+      prev.includes(categoria)
+        ? prev.filter((item) => item !== categoria)
+        : [...prev, categoria]
+    );
+  };
+  const categorias = [
+    "Ropa y accesorios",
+    "Tecnología",
+    "Celulares y tablets",
+    "Computadoras y laptops",
+    "Libros y revistas",
+    "Juguetes",
+    "Videojuegos y consolas",
+    "Electrodomésticos",
+    "Herramientas y bricolaje",
+    "Muebles",
+    "Decoración y hogar",
+    "Bicicletas y transporte",
+    "Arte y manualidades",
+    "Instrumentos musicales",
+    "Cocina y utensilios",
+    "Jardinería y plantas",
+    "Ropa de bebé y maternidad",
+    "Productos para mascotas",
+    "Deportes y ejercicio",
+    "Servicios para intercambiar",
+  ];
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Registro</Text>
-      <TextInput
-        placeholder="Nombre de usuario"
-        value={nombreusuario}
-        onChangeText={setNombreUsuario}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Celular"
-        keyboardType="numeric"
-        value={celularusuario}
-        onChangeText={setCelularUsuario}
-        style={styles.input}
-      />
-      <TouchableOpacity onPress={obtenerUbicacionActual} style={styles.locationButton}>
-  <Text style={styles.locationButtonText}>Obtener ubicación actual</Text>
-</TouchableOpacity>
-{ubicacionarticulo ? (
-  <Text style={styles.locationText}>Ubicación: {ubicacionarticulo}</Text>
-) : null}
+    <>
+      {!intereses && (
+        <View style={styles.container}>
+          <Text style={styles.title}>Registro</Text>
+          <TextInput
+            placeholder="Nombre de usuario"
+            value={nombreusuario}
+            onChangeText={setNombreUsuario}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Celular"
+            keyboardType="numeric"
+            value={celularusuario}
+            onChangeText={setCelularUsuario}
+            style={styles.input}
+          />
+          <TouchableOpacity
+            onPress={obtenerUbicacionActual}
+            style={styles.locationButton}
+          >
+            <Text style={styles.locationButtonText}>
+              Obtener ubicación actual
+            </Text>
+          </TouchableOpacity>
+          {ubicacionarticulo ? (
+            <Text style={styles.locationText}>
+              Ubicación: {ubicacionarticulo}
+            </Text>
+          ) : null}
 
-      <TextInput
-        onPress={() => setShowDatePicker(true)}
-        style={styles.datePickerButton}
-      >
-        <Text style={styles.datePickerText}>
-          Fecha de nacimiento: {formatearFecha(fechanacimientousuario)}
-        </Text>
-      </TextInput>
-      {showDatePicker && (
-        <DateTimePicker
-          value={fechanacimientousuario || new Date()}
-          mode="date"
-          display="default"
-          onChange={onChangeFecha}
-        />
+          <TextInput
+            onPress={() => setShowDatePicker(true)}
+            style={styles.datePickerButton}
+          >
+            <Text style={styles.datePickerText}>
+              Fecha de nacimiento: {formatearFecha(fechanacimientousuario)}
+            </Text>
+          </TextInput>
+          {showDatePicker && (
+            <DateTimePicker
+              value={fechanacimientousuario || new Date()}
+              mode="date"
+              display="default"
+              onChange={onChangeFecha}
+            />
+          )}
+          <TouchableOpacity
+            onPress={seleccionarFoto}
+            style={styles.imageButton}
+          >
+            <Text style={styles.imageButtonText}>
+              Seleccionar Foto de Perfil
+            </Text>
+          </TouchableOpacity>
+          {fotoperfil && (
+            <Image source={{ uri: fotoperfil }} style={styles.image} />
+          )}
+          <TouchableOpacity style={styles.boton} onPress={siguiente}>
+            <Text style={styles.botonTexto}>Registrarse</Text>
+          </TouchableOpacity>
+        </View>
       )}
-      <TouchableOpacity onPress={seleccionarFoto} style={styles.imageButton}>
-        <Text style={styles.imageButtonText}>Seleccionar Foto de Perfil</Text>
-      </TouchableOpacity>
-      {fotoperfil && (
-        <Image source={{ uri: fotoperfil }} style={styles.image} />
+      {intereses && (
+        <View style={styles.container}>
+          <Text style={styles.title}>Elige tus intereses</Text>
+          <Text style={styles.subtitle}>
+            Recibe mejores sugerencias de trueques
+          </Text>
+          <ScrollView contentContainerStyle={styles.scrollContainer}>
+            <View style={styles.tagsContainer}>
+              {categorias.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => toggleCategoria(cat)}
+                  style={[
+                    styles.tag,
+                    seleccionados.includes(cat) && styles.tagSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tagText,
+                      seleccionados.includes(cat) && styles.tagTextSelected,
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+          <View  style={styles.buttonContainer}>
+            <TouchableOpacity onPress={registrarUsuario} style={styles.button}>
+              <Text style={styles.buttonText}>Siguiente</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
-      <TouchableOpacity style={styles.boton} onPress={registrarUsuario}>
-        <Text style={styles.botonTexto}>Registrarse</Text>
-      </TouchableOpacity>
-    </View>
+    </>
   );
 }
 
@@ -265,20 +355,68 @@ const styles = StyleSheet.create({
     color: "#fff",
     textAlign: "center",
     fontWeight: "bold",
-  },locationButton: {
-  backgroundColor: "#007bff",
-  padding: 12,
-  borderRadius: 5,
-  marginBottom: 15,
-},
-locationButtonText: {
-  color: "#fff",
-  textAlign: "center",
-},
-locationText: {
-  textAlign: "center",
-  marginBottom: 15,
-  color: "#333",
-},
-
+  },
+  locationButton: {
+    backgroundColor: "#007bff",
+    padding: 12,
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  locationButtonText: {
+    color: "#fff",
+    textAlign: "center",
+  },
+  locationText: {
+    textAlign: "center",
+    marginBottom: 15,
+    color: "#333",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#6b7280",
+    marginBottom: 20,
+  },
+  scrollContainer: {
+    paddingBottom: 20,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  tag: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 30,
+    backgroundColor: "#f9fafb",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    marginBottom: 10,
+  },
+  tagSelected: {
+    backgroundColor: "#ec4899",
+    borderColor: "#ec4899",
+  },
+  tagText: {
+    color: "#111827",
+    fontSize: 14,
+  },
+  tagTextSelected: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  buttonContainer: {
+    marginTop: 20,
+  },
+  button: {
+    backgroundColor: "#ec4899",
+    borderRadius: 8,
+    paddingVertical: 14,
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "600",
+    textAlign: "center",
+    fontSize: 16,
+  },
 });

@@ -74,12 +74,12 @@ export default function AnadirProducto() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 1,
-      selectionLimit: 3,
+      selectionLimit: 4,
     });
 
     if (!resultado.canceled) {
       const nuevasImagenes = resultado.assets.map((asset) => asset.uri);
-      setFotosArticulo(nuevasImagenes.slice(0, 3));
+      setFotosArticulo(nuevasImagenes.slice(0, 4));
     }
   };
 
