@@ -130,12 +130,16 @@ export const updateArticle = async (articleId, updatedData) => {
 };
 
 export const registerUser = async (userData) => {
+  console.log("---------------4343-----");
+  console.log(`${BASE_URL}user/createUser`);
+  console.log(userData);
   try {
     const response = await axios.post(`${BASE_URL}user/createUser`, userData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     });
+    console.log(response);
     const { usuario, token } = response.data;
     await AsyncStorage.setItem("token", token);
     await AsyncStorage.setItem("codUsuario", usuario.codusuario);

@@ -58,6 +58,7 @@ export default function Register() {
 
   const handleObtenerUbicacionActual = async () => {
     const locationString = await getCurrentLocation(); // Llama a la función de utilidad
+    console.log(locationString);
     if (locationString) {
       setUbicacionArticulo(locationString);
     }
@@ -75,9 +76,12 @@ export default function Register() {
     if (
       !nombreusuario.trim() ||
       !celularusuario.trim() ||
-      !ubicacionarticulo.trim() ||
       !fechanacimientousuario ||
-      !fotoperfil
+      !fotoperfil ||
+      // Modified check for ubicacionarticulo
+      !ubicacionarticulo ||
+      typeof ubicacionarticulo.latitude === "undefined" ||
+      typeof ubicacionarticulo.longitude === "undefined"
     ) {
       Dialog.show({
         type: ALERT_TYPE.WARNING,
@@ -107,7 +111,10 @@ export default function Register() {
     formData.append("codusuario", codusuario);
     formData.append("nombreusuario", nombreusuario);
     formData.append("celularusuario", celularusuario);
-    formData.append("ubicacionarticulo", ubicacionarticulo);
+    formData.append(
+      "ubicacionarticulo",
+      `${ubicacionarticulo.latitude},${ubicacionarticulo.longitude}`
+    );
     formData.append(
       "fechanacimientousuario",
       fechanacimientousuario.toISOString()
@@ -121,7 +128,7 @@ export default function Register() {
       name: fileName,
       type: `image/${fileType}`,
     });
-
+    console.log(formData);
     try {
       const { usuario: nuevoUsuario, token: nuevoToken } = await registerUser(
         formData
@@ -136,7 +143,6 @@ export default function Register() {
           Dialog.hide();
           navigation.replace("Add", {
             usuario: nuevoUsuario,
-            token: nuevoToken,
           });
         },
       });
@@ -210,9 +216,11 @@ export default function Register() {
               </Text>
             </TouchableOpacity>
             {ubicacionarticulo ? (
-              <Text style={styles.locationText}>
-                Ubicación: {ubicacionarticulo}
-              </Text>
+              <View>
+                <Text style={styles.locationText}>Mi Ubicación:</Text>
+                <Text>Latitud: {ubicacionarticulo.latitude}</Text>
+                <Text>Longitud: {ubicacionarticulo.longitude}</Text>
+              </View>
             ) : null}
 
             <TouchableOpacity
