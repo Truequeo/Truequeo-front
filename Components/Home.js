@@ -116,6 +116,8 @@ export default function Home() {
             `${urlBackend}articulo/getArticulo/${usuario.codusuario}?offset=0&limit=${limit}`
           );
           setArticulos(response.data);
+          console.log(response.data);
+
           setOffset(limit);
           setIndiceArticulo(0);
         } catch (error) {
@@ -157,8 +159,11 @@ export default function Home() {
           const response = await axios.get(
             urlBackend +
               "articulo/getArticuloRecomendado/" +
-              selectedArticulo.codarticulo
+              selectedArticulo.codarticulo +
+              "?codusuario=" +
+              usuario.codusuario
           );
+          console.log(response.data)
           setArticulos(response.data);
           setIndiceArticulo(0);
         } catch (error) {

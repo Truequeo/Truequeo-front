@@ -77,14 +77,12 @@ export default function AnadirProducto() {
       );
       return;
     }
-
     const resultado = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.7,
       selectionLimit: 4,
     });
-
     if (!resultado.canceled) {
       const nuevasImagenes = resultado.assets
         .map((asset) => asset.uri)
@@ -92,7 +90,6 @@ export default function AnadirProducto() {
       setFotosArticulo(nuevasImagenes);
     }
   };
-
   const handleEnviarProducto = async () => {
     if (fotosArticulo.length === 0) {
       Alert.alert(
@@ -113,23 +110,19 @@ export default function AnadirProducto() {
       );
       return;
     }
-
     setLoading(true);
-
     const articleData = {
       nombrearticulo,
       detallearticulo,
       estadoarticulo,
       categorias,
     };
-
     try {
       const updatedUser = await createNewArticle(
         articleData,
         fotosArticulo,
         codusuario
       );
-
       Dialog.show({
         type: ALERT_TYPE.SUCCESS,
         title: "Artículo Creado",
