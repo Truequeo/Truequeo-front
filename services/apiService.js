@@ -152,8 +152,8 @@ export const registerUser = async (userData) => {
 
 export const sendVerificationCode = async (phoneNumber) => {
   try {
-    const fullPhoneNumber = `+591${phoneNumber}`;
-    await axios.post(`${BASE_URL}auth/enviarCodigo/${fullPhoneNumber}`);
+    //const fullPhoneNumber = `+591${phoneNumber}`;
+    await axios.post(`${BASE_URL}auth/enviarCodigo/${phoneNumber}`);
   } catch (error) {
     throw error;
   }
@@ -161,9 +161,9 @@ export const sendVerificationCode = async (phoneNumber) => {
 
 export const verifyLoginCode = async (phoneNumber, code) => {
   try {
-    const fullPhoneNumber = `+591${phoneNumber}`;
+    //const fullPhoneNumber = `+591${phoneNumber}`;
     const response = await axios.post(`${BASE_URL}auth/verificarCodigo`, {
-      phone: fullPhoneNumber,
+      phone: phoneNumber,
       code: code,
     });
 
@@ -204,7 +204,7 @@ export const getConversationMessages = async (
     const response = await axios.get(
       `${BASE_URL}chat/mensajes/${codArticulo}/${codRemitente}/${codReceptor}`
     );
-
+    
     return response.data;
   } catch (error) {
     console.error(

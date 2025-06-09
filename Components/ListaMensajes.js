@@ -56,12 +56,12 @@ export default function ListaMensajes() {
 
     const interlocutorNombre =
       item.codremitente === usuario?.codusuario
-        ? item.nombreusuariodestino || "Destinatario Desconocido"
-        : item.nombreusuario || "Remitente Desconocido";
+        ? item.nombrearticulo || "Destinatario Desconocido"
+        : item.nombrearticulo || "Remitente Desconocido";
 
     const interlocutorFoto =
       item.codremitente === usuario?.codusuario
-        ? item.fotoperfilarticulo
+        ? item.fotoarticulo + "/1.jpeg"
         : item.fotoperfil;
 
     return (
@@ -71,11 +71,6 @@ export default function ListaMensajes() {
           navigation.navigate("Chat", {
             usuario,
             articulo: item,
-            interlocutor: {
-              codusuario: esMio ? item.coddestinatario : item.codremitente,
-              nombreusuario: interlocutorNombre,
-              fotoperfil: interlocutorFoto,
-            },
           })
         }
       >
@@ -153,7 +148,7 @@ export default function ListaMensajes() {
         </TouchableOpacity>
         <Text style={styles.title}>TRUEQUEO</Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate("Home", { usuario })}
+          onPress={() => navigation.replace("Home", { usuario })}
         >
           <Icon name="home-outline" size={45} color="#000" />
         </TouchableOpacity>

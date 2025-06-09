@@ -25,6 +25,7 @@ import { BackHandler } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Icon from "react-native-vector-icons/Ionicons";
 import { createNewArticle } from "../services/apiService";
+import { MultiSelect } from "react-native-element-dropdown";
 
 export default function AnadirProducto() {
   const route = useRoute();
@@ -35,7 +36,7 @@ export default function AnadirProducto() {
   const [nombrearticulo, setNombreArticulo] = useState("");
   const [detallearticulo, setDetalleArticulo] = useState("");
   const [estadoarticulo, setEstadoArticulo] = useState("");
-  const [categorias, setCategorias] = useState("");
+  const [categorias, setCategorias] = useState([]);
 
   const [fotosArticulo, setFotosArticulo] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -102,7 +103,7 @@ export default function AnadirProducto() {
       !nombrearticulo.trim() ||
       !detallearticulo.trim() ||
       !estadoarticulo.trim() ||
-      !categorias.trim()
+      !categorias.length === 0
     ) {
       Alert.alert(
         "Campos vacíos",
@@ -115,8 +116,9 @@ export default function AnadirProducto() {
       nombrearticulo,
       detallearticulo,
       estadoarticulo,
-      categorias,
+      categorias: categorias,
     };
+
     try {
       const updatedUser = await createNewArticle(
         articleData,
@@ -153,6 +155,33 @@ export default function AnadirProducto() {
       setLoading(false);
     }
   };
+  const categoriasDisponibles = [
+    "Ropa y accesorios",
+    "Tecnología",
+    "Celulares y tablets",
+    "Computadoras y laptops",
+    "Libros y revistas",
+    "Juguetes",
+    "Videojuegos y consolas",
+    "Electrodomésticos",
+    "Herramientas y bricolaje",
+    "Muebles",
+    "Decoración y hogar",
+    "Bicicletas y transporte",
+    "Arte y manualidades",
+    "Instrumentos musicales",
+    "Cocina y utensilios",
+    "Jardinería y plantas",
+    "Ropa de bebé y maternidad",
+    "Productos para mascotas",
+    "Deportes y ejercicio",
+    "Servicios para intercambiar",
+  ];
+
+  const categoriasData = categoriasDisponibles.map((cat, index) => ({
+    label: cat,
+    value: cat,
+  }));
 
   return (
     <AlertNotificationRoot>
@@ -167,7 +196,6 @@ export default function AnadirProducto() {
           <Text style={styles.textoTitulo}>Añadir producto</Text>
           <View style={{ width: 30 }} />
         </View>
-
         <TextInput
           style={styles.input}
           placeholder="Nombre del artículo"
@@ -184,13 +212,25 @@ export default function AnadirProducto() {
           multiline
           numberOfLines={4}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Categorías (separadas por coma)"
-          placeholderTextColor="#888"
+        <Text style={styles.label}>Categorías:</Text>
+        <MultiSelect
+          style={styles.dropdown}
+          placeholderStyle={styles.placeholderStyle}
+          selectedTextStyle={styles.selectedTextStyle}
+          inputSearchStyle={styles.inputSearchStyle}
+          iconStyle={styles.iconStyle}
+          data={categoriasData}
+          labelField="label"
+          valueField="value"
+          placeholder="Seleccionar categorías"
+          searchPlaceholder="Buscar..."
           value={categorias}
-          onChangeText={setCategorias}
+          onChange={(item) => {
+            setCategorias(item);
+          }}
+          selectedStyle={styles.selectedStyle}
         />
+
         <Text style={styles.label}>Estado del artículo:</Text>
         <View style={styles.pickerContainer}>
           <Picker
@@ -385,5 +425,33 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  dropdown: {
+    height: 50,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    backgroundColor: "#fff",
+  },
+  placeholderStyle: {
+    fontSize: 16,
+    color: "#888",
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    color: "#333",
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 16,
+  },
+  iconStyle: {
+    width: 20,
+    height: 20,
+  },
+  selectedStyle: {
+    borderRadius: 12,
   },
 });

@@ -29,12 +29,10 @@ export default function Chat() {
   const flatListRef = useRef(null);
   const otherParticipantId = articulo.codusuario || articulo.codreceptor;
   const otherParticipantProfilePic =
-    articulo.fotoperfilinterlocutor ||
-    articulo.fotoperfil ||
+    articulo.fotoarticulo+"/1.jpeg" ||
     "https://via.placeholder.com/55";
   const otherParticipantName =
-    articulo.nombreusuariointerlocutor ||
-    articulo.nombreusuario ||
+    articulo.nombrearticulo ||
     "Usuario Desconocido";
 
   const fetchMessages = async () => {
@@ -52,7 +50,6 @@ export default function Chat() {
         usuario.codusuario,
         otherParticipantId
       );
-
       const formattedMessages = data.map((msg, index) => ({
         id: msg.idmensaje
           ? msg.idmensaje.toString()
