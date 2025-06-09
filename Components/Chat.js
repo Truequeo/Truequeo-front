@@ -16,8 +16,13 @@ import {
 import Icon from "react-native-vector-icons/Ionicons";
 
 import { getConversationMessages, sendMessage } from "../services/apiService";
+import io from "socket.io-client";
+import { urlBackend } from "./VariablesEntorno";
 
 export default function Chat() {
+  const SOCKET_URL = urlBackend;
+  const socketRef = useRef();
+
   const route = useRoute();
   const navigation = useNavigation();
   const { usuario, token, articulo } = route.params;
@@ -29,11 +34,8 @@ export default function Chat() {
   const flatListRef = useRef(null);
   const otherParticipantId = articulo.codusuario || articulo.codreceptor;
   const otherParticipantProfilePic =
-    articulo.fotoarticulo+"/1.jpeg" ||
-    "https://via.placeholder.com/55";
-  const otherParticipantName =
-    articulo.nombrearticulo ||
-    "Usuario Desconocido";
+    articulo.fotoarticulo + "/1.jpeg" || "https://via.placeholder.com/55";
+  const otherParticipantName = articulo.nombrearticulo || "Usuario Desconocido";
 
   const fetchMessages = async () => {
     if (!articulo?.codarticulo || !usuario?.codusuario || !otherParticipantId) {
@@ -41,7 +43,6 @@ export default function Chat() {
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       setError(null);
@@ -58,12 +59,10 @@ export default function Chat() {
         sender: msg.codremitente === usuario.codusuario ? "me" : "other",
       }));
       setMessages(formattedMessages);
-      console.log("Mensajes cargados:", formattedMessages);
     } catch (err) {
-      console.error("❌ Error al obtener mensajes:", err);
       const displayError =
         err.response?.data?.error ||
-        "No se pudieron cargar los mensajes de chat. Por favor, verifica tu conexión o intenta de nuevo más tarde.";
+        "No se pudieron cargar los mensajes. Verifica tu conexión.";
       setError(displayError);
       Alert.alert("Error", displayError);
     } finally {
@@ -73,6 +72,34 @@ export default function Chat() {
 
   useEffect(() => {
     fetchMessages();
+    socketRef.current = io(urlBackend);
+    console.log(socketRef)
+    socketRef.current.on("connect", () => {
+      console.log("🟢 Conectado al socket server");
+    });
+    socketRef.current.on("nuevoMensaje", (mensaje) => {
+      console.log("📥 Mensaje recibido:", mensaje);
+      if (
+        mensaje.codarticulo === articulo.codarticulo &&
+        ((mensaje.codremitente === otherParticipantId &&
+          mensaje.codreceptor === usuario.codusuario) ||
+          (mensaje.codremitente === usuario.codusuario &&
+            mensaje.codreceptor === otherParticipantId))
+      ) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: mensaje.idmensaje?.toString() || Date.now().toString(),
+            texto: mensaje.texto,
+            sender: mensaje.codremitente === usuario.codusuario ? "me" : "other",
+          },
+        ]);
+      }
+    });
+    return () => {
+      socketRef.current.disconnect();
+      console.log("🔴 Socket desconectado");
+    };
   }, [articulo, usuario, otherParticipantId]);
 
   useEffect(() => {
@@ -83,29 +110,23 @@ export default function Chat() {
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-
     const newMessageData = {
       codarticulo: articulo.codarticulo,
       codremitente: usuario.codusuario,
       codreceptor: otherParticipantId,
       texto: inputText,
     };
-
     try {
       const response = await sendMessage(newMessageData);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        {
-          id: response.idmensaje
-            ? response.idmensaje.toString()
-            : Date.now().toString(),
-          texto: inputText,
-          sender: "me",
-        },
-      ]);
+      const newMessage = {
+        id: response.idmensaje?.toString() || Date.now().toString(),
+        texto: inputText,
+        sender: "me",
+      };
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
       setInputText("");
+      socketRef.current.emit("enviarMensaje", newMessageData);
     } catch (err) {
-      console.error("Error al enviar mensaje:", err);
       const displayError =
         err.response?.data?.error || "No se pudo enviar el mensaje.";
       Alert.alert("Error", displayError);
@@ -237,7 +258,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start", // Alinea al inicio para el botón de atrás
+    justifyContent: "flex-start",
     paddingHorizontal: 15,
     paddingVertical: 10,
     paddingTop: Platform.OS === "android" ? 40 : 50,
@@ -251,7 +272,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   backButton: {
-    marginRight: 15, // Más espacio para el botón de atrás
+    marginRight: 15,
   },
   profileImage: {
     width: 45,
