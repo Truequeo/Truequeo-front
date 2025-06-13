@@ -1,2 +1,2 @@
 //export const urlBackend = "https://truequedo-back-r9ah.onrender.com/"
-export const urlBackend = "http://10.0.2.2:3000/"
+export const urlBackend = "http://192.168.100.100:3000/"

@@ -52,7 +52,7 @@ export default function Login() {
         button: "Aceptar",
       });
     }
-    if (!/^\d{8}$/.test(celular)) {
+    /*if (!/^\d{6}$/.test(celular)) {
       return Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Número inválido",
@@ -60,7 +60,7 @@ export default function Login() {
         button: "Aceptar",
       });
     }
-
+*/
     try {
       await sendVerificationCode(celular);
       setMostrandoInputCelular(false);

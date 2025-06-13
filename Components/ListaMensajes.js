@@ -30,7 +30,6 @@ export default function ListaMensajes() {
         setLoading(false);
         return;
       }
-
       try {
         setLoading(true);
         const data = await getUserChats(usuario.codusuario); // Llama al servicio
@@ -54,33 +53,32 @@ export default function ListaMensajes() {
   const renderItem = ({ item }) => {
     if (!item) return null;
 
-    const interlocutorNombre =
-      item.codremitente === usuario?.codusuario
-        ? item.nombrearticulo || "Destinatario Desconocido"
-        : item.nombrearticulo || "Remitente Desconocido";
-
-    const interlocutorFoto =
-      item.codremitente === usuario?.codusuario
-        ? item.fotoarticulo + "/1.jpeg"
-        : item.fotoperfil;
-
     return (
       <TouchableOpacity
         style={styles.chatItem}
-        onPress={() =>
+        onPress={() => {
           navigation.navigate("Chat", {
-            usuario,
-            articulo: item,
-          })
-        }
+            codusuario: usuario.codusuario,
+            codarticulo: item.codarticulo,
+            nombrearticulo: item.nombrearticulo,
+            coddueño:
+              usuario.codusuario === item.codremitente
+                ? item.codreceptor
+                : item.codremitente,
+            fotoarticulo: item.fotoarticulo,
+          });
+        }}
       >
         <Image
-          source={{ uri: interlocutorFoto || "https://via.placeholder.com/48" }} // Fallback de imagen
+          source={{
+            uri:
+              item.fotoarticulo + "/1.jpeg" || "https://via.placeholder.com/48",
+          }} // Fallback de imagen
           style={styles.avatar}
         />
         <View style={styles.chatContent}>
           <View style={styles.chatHeader}>
-            <Text style={styles.chatName}>{interlocutorNombre}</Text>
+            <Text style={styles.chatName}>{item.nombrearticulo}</Text>
             {item.fecha && ( // Asegúrate de que `fecha` exista
               <Text style={styles.chatTime}>
                 {new Date(item.fecha).toLocaleTimeString([], {

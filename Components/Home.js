@@ -337,9 +337,12 @@ export default function Home() {
           onPress={() => {
             if (selectedArticulo) {
               navigation.navigate("Chat", {
-                usuario,
+                codusuario:usuario.codusuario,
                 token,
-                articulo: articulos[indiceArticulo],
+                codarticulo: articulos[indiceArticulo].codarticulo,
+                nombrearticulo: articulos[indiceArticulo].nombrearticulo,
+                coddueño: articulos[indiceArticulo].codusuario,
+                fotoarticulo : articulos[indiceArticulo].fotoarticulo,
               });
             }
           }}

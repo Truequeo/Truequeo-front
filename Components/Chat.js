@@ -25,20 +25,16 @@ export default function Chat() {
 
   const route = useRoute();
   const navigation = useNavigation();
-  const { usuario, token, articulo } = route.params;
+  const { codusuario, token, codarticulo,nombrearticulo,coddueño,fotoarticulo } = route.params;
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const flatListRef = useRef(null);
-  const otherParticipantId = articulo.codusuario || articulo.codreceptor;
-  const otherParticipantProfilePic =
-    articulo.fotoarticulo + "/1.jpeg" || "https://via.placeholder.com/55";
-  const otherParticipantName = articulo.nombrearticulo || "Usuario Desconocido";
 
   const fetchMessages = async () => {
-    if (!articulo?.codarticulo || !usuario?.codusuario || !otherParticipantId) {
+    if (!codarticulo || !codusuario || !coddueño) {
       setError("Faltan datos esenciales para cargar la conversación.");
       setLoading(false);
       return;
@@ -46,18 +42,19 @@ export default function Chat() {
     try {
       setLoading(true);
       setError(null);
+      console.log(codarticulo , codusuario , coddueño)
       const data = await getConversationMessages(
-        articulo.codarticulo,
-        usuario.codusuario,
-        otherParticipantId
-      );
+        codarticulo,
+        codusuario,
+        coddueño);
       const formattedMessages = data.map((msg, index) => ({
         id: msg.idmensaje
           ? msg.idmensaje.toString()
           : `temp_${index}_${Date.now()}`,
         texto: msg.texto,
-        sender: msg.codremitente === usuario.codusuario ? "me" : "other",
+        sender: msg.codremitente === codusuario ? "me" : "other",
       }));
+      console.log(formattedMessages)
       setMessages(formattedMessages);
     } catch (err) {
       const displayError =
@@ -73,25 +70,24 @@ export default function Chat() {
   useEffect(() => {
     fetchMessages();
     socketRef.current = io(urlBackend);
-    console.log(socketRef)
     socketRef.current.on("connect", () => {
       console.log("🟢 Conectado al socket server");
     });
     socketRef.current.on("nuevoMensaje", (mensaje) => {
       console.log("📥 Mensaje recibido:", mensaje);
       if (
-        mensaje.codarticulo === articulo.codarticulo &&
-        ((mensaje.codremitente === otherParticipantId &&
-          mensaje.codreceptor === usuario.codusuario) ||
-          (mensaje.codremitente === usuario.codusuario &&
-            mensaje.codreceptor === otherParticipantId))
+        mensaje.codarticulo === codarticulo &&
+        ((mensaje.codremitente === coddueño &&
+          mensaje.codreceptor === codusuario) ||
+          (mensaje.codremitente === codusuario &&
+            mensaje.codreceptor === coddueño))
       ) {
         setMessages((prev) => [
           ...prev,
           {
             id: mensaje.idmensaje?.toString() || Date.now().toString(),
             texto: mensaje.texto,
-            sender: mensaje.codremitente === usuario.codusuario ? "me" : "other",
+            sender: mensaje.codremitente === codusuario ? "me" : "other",
           },
         ]);
       }
@@ -100,7 +96,7 @@ export default function Chat() {
       socketRef.current.disconnect();
       console.log("🔴 Socket desconectado");
     };
-  }, [articulo, usuario, otherParticipantId]);
+  }, [codarticulo, codusuario, coddueño]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -109,29 +105,26 @@ export default function Chat() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
-    const newMessageData = {
-      codarticulo: articulo.codarticulo,
-      codremitente: usuario.codusuario,
-      codreceptor: otherParticipantId,
-      texto: inputText,
-    };
-    try {
-      const response = await sendMessage(newMessageData);
-      const newMessage = {
-        id: response.idmensaje?.toString() || Date.now().toString(),
-        texto: inputText,
-        sender: "me",
-      };
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-      setInputText("");
-      socketRef.current.emit("enviarMensaje", newMessageData);
-    } catch (err) {
-      const displayError =
-        err.response?.data?.error || "No se pudo enviar el mensaje.";
-      Alert.alert("Error", displayError);
-    }
+  if (!inputText.trim()) return;
+
+  const newMessageData = {
+    codarticulo: codarticulo,
+    codremitente: codusuario,
+    codreceptor: coddueño,
+    texto: inputText,
   };
+
+  try {
+    await sendMessage(newMessageData);
+    setInputText("");
+    socketRef.current.emit("enviarMensaje", newMessageData);
+  } catch (err) {
+    const displayError =
+      err.response?.data?.error || "No se pudo enviar el mensaje.";
+    Alert.alert("Error", displayError);
+  }
+};
+
 
   const renderItem = ({ item }) => (
     <View
@@ -186,11 +179,11 @@ export default function Chat() {
           <Icon name="arrow-back" size={30} color="#000" />
         </TouchableOpacity>
         <Image
-          source={{ uri: otherParticipantProfilePic }}
+          source={{ uri: fotoarticulo + "/1.jpeg" }}
           style={styles.profileImage}
         />
         <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-          {otherParticipantName}
+          {nombrearticulo}
         </Text>
         <View style={{ width: 30 }} />
       </View>
