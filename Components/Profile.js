@@ -59,6 +59,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (usuario?.fotoperfil) {
+      console.log(usuario?.fotoperfil);
       setFotoperfil(`${usuario.fotoperfil}?t=${Date.now()}`); // Añade timestamp para evitar caché
     }
   }, [usuario?.fotoperfil]);
@@ -93,7 +94,7 @@ export default function Profile() {
 
   const handleGuardarCambios = async () => {
     setEditando(false); // Sale del modo edición inmediatamente
-
+    console.log("entra")
     const formData = new FormData();
     formData.append("codusuario", usuario?.codusuario);
     formData.append("nombreusuario", nombre);
@@ -240,7 +241,13 @@ export default function Profile() {
               )}
               <TouchableOpacity
                 style={styles.editButton}
-                onPress={handleGuardarCambios}
+                onPress={() => {
+                  if (!editando) {
+                    setEditando(true);
+                  } else {
+                    (handleGuardarCambios());
+                  }
+                }}
               >
                 <Icon
                   name={editando ? "save-outline" : "create-outline"}

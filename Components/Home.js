@@ -87,7 +87,7 @@ export default function Home() {
             },
           }
         );
-        console.log(response.data.length);
+       // console.log(response.data.length);
         if (response.data.length > 0) {
           setArticulos((prev) => [...prev, ...response.data]);
           setOffsetCerca((prev) => prev + limit);
@@ -116,7 +116,7 @@ export default function Home() {
             `${urlBackend}articulo/getArticulo/${usuario.codusuario}?offset=0&limit=${limit}`
           );
           setArticulos(response.data);
-          console.log(response.data);
+          //console.log(response.data);
 
           setOffset(limit);
           setIndiceArticulo(0);
@@ -132,7 +132,6 @@ export default function Home() {
             return;
           }
           const { coords } = await Location.getCurrentPositionAsync({});
-          console.log(coords);
           const response = await axios.get(
             urlBackend + "articulo/getArticuloCerca",
             {
@@ -148,8 +147,8 @@ export default function Home() {
           setArticulos(response.data);
           setOffsetCerca(limit);
           setIndiceArticulo(0);
-          console.table("obtiene" + articulos);
-          console.log("obtiene " + response.data.length);
+          //console.table("obtiene" + articulos);
+          //console.log("obtiene " + response.data.length);
         } catch (error) {
           console.error("Error al obtener artículos 'Cerca':", error);
         }
@@ -163,7 +162,7 @@ export default function Home() {
               "?codusuario=" +
               usuario.codusuario
           );
-          console.log(response.data)
+          //onsole.log(response.data)
           setArticulos(response.data);
           setIndiceArticulo(0);
         } catch (error) {
