@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,88 +13,173 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/Ionicons";
 
 import { getUserChats } from "../services/apiService";
+import io from "socket.io-client";
+import { urlBackend } from "./VariablesEntorno";
+import { useFocusEffect } from "@react-navigation/native";
 
+import axios from "axios";
 export default function ListaMensajes() {
   const route = useRoute();
   const navigation = useNavigation();
   const { usuario } = route.params;
 
   const [mensajes, setMensajes] = useState([]);
-  const [loading, setLoading] = useState(true); // Estado de carga
-  const [error, setError] = useState(null); // Estado para manejar errores
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const socketRef = useRef(null);
+
+  const fetchMensajes = async () => {
+    if (!usuario?.codusuario) {
+      setError("ID de usuario no disponible.");
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getUserChats(usuario.codusuario);
+      setMensajes(data || []);
+    } catch (err) {
+      console.error("❌ Error al obtener chats:", err);
+      setError("No se pudieron cargar los chats.");
+      Alert.alert("Error", "No se pudieron cargar los chats.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchMensajes = async () => {
-      if (!usuario?.codusuario) {
-        setError("ID de usuario no disponible.");
-        setLoading(false);
-        return;
-      }
-      try {
-        setLoading(true);
-        const data = await getUserChats(usuario.codusuario); // Llama al servicio
-        setMensajes(data);
-        console.log("Mensajes cargados:", data);
-      } catch (err) {
-        console.error("❌ Error al obtener chats:", err);
-        setError("No se pudieron cargar los chats. Intenta de nuevo.");
-        Alert.alert(
-          "Error",
-          "No se pudieron cargar los chats. Por favor, intenta de nuevo más tarde."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMensajes();
+    socketRef.current = io(urlBackend);
+    socketRef.current.on("connect", () => {
+      console.log("🟢 Conectado al WebSocket en ListaMensajes");
+    });
+    socketRef.current.on("nuevoMensaje", (mensaje) => {
+      if (
+        mensaje.codremitente === usuario.codusuario ||
+        mensaje.codreceptor === usuario.codusuario
+      ) {
+        setMensajes((prevMensajes) => {
+          const index = prevMensajes.findIndex(
+            (item) =>
+              item.codusuario2 === mensaje.codremitente ||
+              item.codusuario2 === mensaje.codreceptor
+          );
+          if (index !== -1) {
+            const updated = [...prevMensajes];
+            updated[index] = {
+              ...updated[index],
+              texto: mensaje.texto,
+              fecha: new Date().toISOString(),
+              leido: false,
+            };
+            return [...updated]; 
+          } else {
+            const nuevoChat = {
+              codusuario2: mensaje.codremitente,
+              texto: mensaje.texto,
+              fecha: new Date().toISOString(),
+              leido: false,
+            };
+            return [nuevoChat, ...prevMensajes];
+          }
+        });
+      }
+    });
+    return () => {
+      socketRef.current.disconnect();
+      console.log("🔴 Desconectado de WebSocket");
+    };
   }, [usuario?.codusuario]);
+
+  const marcarMensajesComoLeidos = async (
+    codarticulo1,
+    codarticulo2,
+    codusuario1,
+    codusuario2
+  ) => {
+    try {
+      await axios.post(`${urlBackend}chat/mensajes/leido`, {
+        codarticulo1,
+        codarticulo2,
+        codusuario1,
+        codusuario2,
+      });
+    } catch (error) {
+      console.error("❌ Error al marcar como leídos:", error);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchMensajes();
+    }, [usuario.codusuario])
+  );
 
   const renderItem = ({ item }) => {
     if (!item) return null;
-
     return (
       <TouchableOpacity
         style={styles.chatItem}
-        onPress={() => {
+        onPress={async () => {
+          await marcarMensajesComoLeidos(
+            item.codarticulo1,
+            item.codarticulo2,
+            usuario.codusuario,
+            item.codusuario2
+          );
           navigation.navigate("Chat", {
             codusuario: usuario.codusuario,
-            codarticulo: item.codarticulo,
-            nombrearticulo: item.nombrearticulo,
-            coddueño:
-              usuario.codusuario === item.codremitente
-                ? item.codreceptor
-                : item.codremitente,
-            fotoarticulo: item.fotoarticulo,
+            codarticulo: item.codarticulo1,
+            codarticulodueño: item.codarticulo2,
+            nombrearticulodueño: item.nombrearticulo2,
+            coddueño: item.codusuario2,
+            fotoarticulodueño: item.fotoarticulo2,
           });
         }}
       >
         <Image
           source={{
             uri:
-              item.fotoarticulo + "/1.jpeg" || "https://via.placeholder.com/48",
-          }} // Fallback de imagen
+              (item.fotoarticulo2 || "https://via.placeholder.com/48") +
+              "/1.jpeg",
+          }}
           style={styles.avatar}
         />
         <View style={styles.chatContent}>
           <View style={styles.chatHeader}>
-            <Text style={styles.chatName}>{item.nombrearticulo}</Text>
-            {item.fecha && ( // Asegúrate de que `fecha` exista
-              <Text style={styles.chatTime}>
-                {new Date(item.fecha).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-            )}
+            <Text style={styles.chatName}>{item.nombrearticulo2}</Text>
+            <View style={styles.timeAndDotContainer}>
+              {item.fecha && (
+                <Text style={styles.chatTime}>
+                  {new Date(item.fecha).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              )}
+              {item.leido === false &&
+                item.codreceptor === usuario.codusuario && (
+                  <View style={styles.redDot} />
+                )}
+            </View>
           </View>
-          <Text numberOfLines={1} style={styles.chatMessage}>
-            {item.texto || "No hay mensajes."}{" "}
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.chatMessage,
+              item.leido === false &&
+                item.codreceptor === usuario.codusuario &&
+                styles.chatMessageBold,
+            ]}
+          >
+            {item.texto || "No hay mensajes."}
           </Text>
         </View>
       </TouchableOpacity>
     );
   };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -109,10 +194,7 @@ export default function ListaMensajes() {
       <View style={[styles.container, styles.centerContent]}>
         <Icon name="sad-outline" size={50} color="#a864ff" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => fetchMensajes()}
-        >
+        <TouchableOpacity style={styles.retryButton} onPress={fetchMensajes}>
           <Text style={styles.retryButtonText}>Reintentar</Text>
         </TouchableOpacity>
       </View>
@@ -153,7 +235,9 @@ export default function ListaMensajes() {
       </View>
       <FlatList
         data={mensajes}
-        keyExtractor={(item, index) => item.idmensaje || index.toString()} // Usa un ID único si existe
+        keyExtractor={(item, index) =>
+          item.idmensaje?.toString() || index.toString()
+        }
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 20 }}
       />
@@ -166,7 +250,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 50,
     paddingHorizontal: 20,
-    backgroundColor: "#f9f9f9", // Fondo más claro
+    backgroundColor: "#f9f9f9", 
   },
   centerContent: {
     justifyContent: "center",
@@ -180,7 +264,7 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#d9534f", // Rojo para errores
+    color: "#d9534f", 
     textAlign: "center",
   },
   noMessagesText: {
@@ -210,7 +294,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10, // Un poco de espacio debajo del header
+    marginBottom: 10, 
   },
   profileImage: {
     width: 65,
@@ -222,7 +306,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: "bold",
-    color: "#333", // Color de texto más oscuro
+    color: "#333", 
   },
   chatItem: {
     flexDirection: "row",
@@ -266,5 +350,21 @@ const styles = StyleSheet.create({
   chatMessage: {
     color: "#666",
     fontSize: 15, // Un poco más grande
+  },
+  chatMessageBold: {
+    fontWeight: "bold",
+    color: "#000",
+  },
+  redDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "red",
+    marginLeft: 6,
+  },
+  timeAndDotContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 });

@@ -87,7 +87,7 @@ export default function Home() {
             },
           }
         );
-       // console.log(response.data.length);
+        // console.log(response.data.length);
         if (response.data.length > 0) {
           setArticulos((prev) => [...prev, ...response.data]);
           setOffsetCerca((prev) => prev + limit);
@@ -111,7 +111,7 @@ export default function Home() {
       if (isFocused && filtroSeleccionado === "Todo") {
         setArticulos([]);
         try {
-          console.log("entra cuando carga");
+          //console.log("entra cuando carga");
           const response = await axios.get(
             `${urlBackend}articulo/getArticulo/${usuario.codusuario}?offset=0&limit=${limit}`
           );
@@ -148,7 +148,7 @@ export default function Home() {
           setOffsetCerca(limit);
           setIndiceArticulo(0);
           //console.table("obtiene" + articulos);
-          //console.log("obtiene " + response.data.length);
+          console.log("obtiene " + response.data.length);
         } catch (error) {
           console.error("Error al obtener artículos 'Cerca':", error);
         }
@@ -335,13 +335,15 @@ export default function Home() {
         <TouchableOpacity
           onPress={() => {
             if (selectedArticulo) {
+              console.log(selectedArticulo);
               navigation.navigate("Chat", {
-                codusuario:usuario.codusuario,
-                token,
-                codarticulo: articulos[indiceArticulo].codarticulo,
-                nombrearticulo: articulos[indiceArticulo].nombrearticulo,
+                codusuario: usuario.codusuario,
+                codarticulo: selectedArticulo.codarticulo,
+                codarticulodueño: articulos[indiceArticulo].codarticulo,
+                nombrearticulodueño: articulos[indiceArticulo].nombrearticulo,
                 coddueño: articulos[indiceArticulo].codusuario,
-                fotoarticulo : articulos[indiceArticulo].fotoarticulo,
+                fotoarticulodueño: articulos[indiceArticulo].fotoarticulo,
+                token
               });
             }
           }}

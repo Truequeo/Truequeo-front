@@ -197,12 +197,13 @@ export const getUserChats = async (codUsuario) => {
 
 export const getConversationMessages = async (
   codArticulo,
+  codarticulodueño,
   codRemitente,
   codReceptor
 ) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}chat/mensajes/${codArticulo}/${codRemitente}/${codReceptor}`
+      `${BASE_URL}chat/mensajes/${codArticulo}/${codarticulodueño}/${codRemitente}/${codReceptor}`
     );
     
     return response.data;

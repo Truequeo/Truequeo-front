@@ -18,23 +18,34 @@ import Icon from "react-native-vector-icons/Ionicons";
 import { getConversationMessages, sendMessage } from "../services/apiService";
 import io from "socket.io-client";
 import { urlBackend } from "./VariablesEntorno";
+import axios from "axios";
 
 export default function Chat() {
-  const SOCKET_URL = urlBackend;
   const socketRef = useRef();
 
   const route = useRoute();
   const navigation = useNavigation();
-  const { codusuario, token, codarticulo,nombrearticulo,coddueño,fotoarticulo } = route.params;
+  const {
+    codusuario,
+    token,
+    codarticulo,
+    codarticulodueño,
+    nombrearticulodueño,
+    coddueño,
+    fotoarticulodueño,
+  } = route.params;
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const flatListRef = useRef(null);
-
+  const [mostrarBanner, setMostrarBanner] = useState({
+    estado: null,
+    texto: "",
+  });
   const fetchMessages = async () => {
-    if (!codarticulo || !codusuario || !coddueño) {
+    if (!codarticulodueño || !codarticulo || !codusuario || !coddueño) {
       setError("Faltan datos esenciales para cargar la conversación.");
       setLoading(false);
       return;
@@ -42,11 +53,12 @@ export default function Chat() {
     try {
       setLoading(true);
       setError(null);
-      console.log(codarticulo , codusuario , coddueño)
       const data = await getConversationMessages(
         codarticulo,
+        codarticulodueño,
         codusuario,
-        coddueño);
+        coddueño
+      );
       const formattedMessages = data.map((msg, index) => ({
         id: msg.idmensaje
           ? msg.idmensaje.toString()
@@ -54,8 +66,12 @@ export default function Chat() {
         texto: msg.texto,
         sender: msg.codremitente === codusuario ? "me" : "other",
       }));
-      console.log(formattedMessages)
       setMessages(formattedMessages);
+      setMostrarBanner(
+        !data[0]?.estadofinal || data[0].estadofinal === "Pendiente"
+          ? { estado: true, texto: "" }
+          : { estado: false, texto: data[0].estadofinal }
+      );
     } catch (err) {
       const displayError =
         err.response?.data?.error ||
@@ -75,28 +91,20 @@ export default function Chat() {
     });
     socketRef.current.on("nuevoMensaje", (mensaje) => {
       console.log("📥 Mensaje recibido:", mensaje);
-      if (
-        mensaje.codarticulo === codarticulo &&
-        ((mensaje.codremitente === coddueño &&
-          mensaje.codreceptor === codusuario) ||
-          (mensaje.codremitente === codusuario &&
-            mensaje.codreceptor === coddueño))
-      ) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: mensaje.idmensaje?.toString() || Date.now().toString(),
-            texto: mensaje.texto,
-            sender: mensaje.codremitente === codusuario ? "me" : "other",
-          },
-        ]);
-      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: mensaje.idmensaje?.toString() || Date.now().toString(),
+          texto: mensaje.texto,
+          sender: mensaje.codremitente === codusuario ? "me" : "other",
+        },
+      ]);
     });
     return () => {
       socketRef.current.disconnect();
       console.log("🔴 Socket desconectado");
     };
-  }, [codarticulo, codusuario, coddueño]);
+  }, [codarticulo, codarticulodueño, codusuario, coddueño]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -105,26 +113,26 @@ export default function Chat() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-  if (!inputText.trim()) return;
+    if (!inputText.trim()) return;
 
-  const newMessageData = {
-    codarticulo: codarticulo,
-    codremitente: codusuario,
-    codreceptor: coddueño,
-    texto: inputText,
+    const newMessageData = {
+      codarticulo: codarticulo,
+      codarticulo2: codarticulodueño,
+      codremitente: codusuario,
+      codreceptor: coddueño,
+      texto: inputText,
+    };
+
+    try {
+      await sendMessage(newMessageData);
+      setInputText("");
+      socketRef.current.emit("enviarMensaje", newMessageData);
+    } catch (err) {
+      const displayError =
+        err.response?.data?.error || "No se pudo enviar el mensaje.";
+      Alert.alert("Error", displayError);
+    }
   };
-
-  try {
-    await sendMessage(newMessageData);
-    setInputText("");
-    socketRef.current.emit("enviarMensaje", newMessageData);
-  } catch (err) {
-    const displayError =
-      err.response?.data?.error || "No se pudo enviar el mensaje.";
-    Alert.alert("Error", displayError);
-  }
-};
-
 
   const renderItem = ({ item }) => (
     <View
@@ -164,6 +172,40 @@ export default function Chat() {
       </View>
     );
   }
+  const modificarEstado = async (codarticulo, codarticulo2, nuevoEstado) => {
+  try {
+    const response = await axios.post(`${urlBackend}match`, {
+      codarticulo,
+      codarticulo2,
+      estado: nuevoEstado,
+    });
+
+    const final = response.data.estado_final;
+
+    if (final === "Truequeado") {
+      Alert.alert("Trueque exitoso", "Ambas partes aceptaron el trueque.");
+    } else if (final === "Rechazado") {
+      Alert.alert("Trueque rechazado", "Una de las partes rechazó el trueque.");
+    } else {
+      Alert.alert("Esperando respuesta", "Aún falta que la otra parte responda.");
+    }
+
+    setMostrarBanner({ estado: false, texto: final });
+
+  } catch (error) {
+    if (error.response?.data?.estado_final === "Rechazado") {
+      Alert.alert(
+        "Trueque cancelado",
+        "El otro usuario ya rechazó el trueque. No se puede continuar."
+      );
+      setMostrarBanner({ estado: false, texto: "Rechazado" });
+    } else {
+      console.error("Error al modificar estado:", error);
+      Alert.alert("Error", "Ocurrió un problema al intentar modificar el estado.");
+    }
+  }
+};
+
 
   return (
     <KeyboardAvoidingView
@@ -179,15 +221,50 @@ export default function Chat() {
           <Icon name="arrow-back" size={30} color="#000" />
         </TouchableOpacity>
         <Image
-          source={{ uri: fotoarticulo + "/1.jpeg" }}
+          source={{ uri: fotoarticulodueño + "/1.jpeg" }}
           style={styles.profileImage}
         />
         <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-          {nombrearticulo}
+          {nombrearticulodueño}
         </Text>
         <View style={{ width: 30 }} />
       </View>
-
+      {mostrarBanner.estado && (
+        <View style={styles.bannerContainer}>
+          <Text style={styles.bannerTitle}>¿Se realizará el trueque?</Text>
+          <View style={styles.bannerButtons}>
+            <TouchableOpacity
+              style={[styles.bannerButton, { backgroundColor: "#4CAF50" }]}
+              onPress={() => {
+                modificarEstado(codarticulo, codarticulodueño, "Truequeado");
+              }}
+            >
+              <Text style={styles.bannerButtonText}>Truequeado</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.bannerButton, { backgroundColor: "#FF9800" }]}
+              onPress={() => {
+                modificarEstado(codarticulo, codarticulodueño, "En proceso");
+              }}
+            >
+              <Text style={styles.bannerButtonText}>En proceso</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.bannerButton, { backgroundColor: "#F44336" }]}
+              onPress={() => {
+                modificarEstado(codarticulo, codarticulodueño, "Rechazado");
+              }}
+            >
+              <Text style={styles.bannerButtonText}>Rechazado</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {!mostrarBanner.estado && (
+        <View style={styles.bannerContainer}>
+          <Text style={styles.bannerTitle}>{mostrarBanner.texto}</Text>
+        </View>
+      )}
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -199,7 +276,6 @@ export default function Chat() {
         }
         onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
       />
-
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.textInput}
@@ -344,5 +420,33 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
+  },
+  bannerContainer: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  bannerTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  bannerButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  bannerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    marginHorizontal: 5,
+  },
+  bannerButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
