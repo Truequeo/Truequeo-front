@@ -82,29 +82,80 @@ export default function Chat() {
       setLoading(false);
     }
   };
+useEffect(() => {
+  fetchMessages();
+  socketRef.current = io(urlBackend);
+  socketRef.current.on("connect", () => {
+    console.log("🟢 Conectado al socket server");
+  });
+  socketRef.current.on("cambioEstado", ({ codarticulo, codarticulo2, estado, quienCambio }) => {
+  const soyInvolucrado =
+    (codarticulo === route.params.codarticulo &&
+      codarticulo2 === route.params.codarticulodueño) ||
+    (codarticulo2 === route.params.codarticulo &&
+      codarticulo === route.params.codarticulodueño);
 
-  useEffect(() => {
-    fetchMessages();
-    socketRef.current = io(urlBackend);
-    socketRef.current.on("connect", () => {
-      console.log("🟢 Conectado al socket server");
-    });
-    socketRef.current.on("nuevoMensaje", (mensaje) => {
-      console.log("📥 Mensaje recibido:", mensaje);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: mensaje.idmensaje?.toString() || Date.now().toString(),
-          texto: mensaje.texto,
-          sender: mensaje.codremitente === codusuario ? "me" : "other",
-        },
-      ]);
-    });
-    return () => {
-      socketRef.current.disconnect();
-      console.log("🔴 Socket desconectado");
-    };
-  }, [codarticulo, codarticulodueño, codusuario, coddueño]);
+  if (!soyInvolucrado) return;
+
+  const soyQuienCambio = quienCambio === codusuario;
+
+  const estadoFinalizado =
+    estado === "Rechazado" || estado === "Truequeado";
+
+  setMostrarBanner({
+    estado: !estadoFinalizado,
+    texto: estado,
+  });
+
+  if (!soyQuienCambio) {
+    Alert.alert(
+      estadoFinalizado ? "Trueque finalizado" : "Estado actualizado",
+      `Nuevo estado: ${estado}`
+    );
+  }
+});
+
+socketRef.current.on("informarOtro", ({ codarticulo, codarticulo2, estado, quienCambio }) => {
+  const soyInvolucrado =
+    (codarticulo === route.params.codarticulo &&
+      codarticulo2 === route.params.codarticulodueño) ||
+    (codarticulo2 === route.params.codarticulo &&
+      codarticulo === route.params.codarticulodueño);
+
+  if (!soyInvolucrado) return;
+
+  const soyQuienCambio = quienCambio === codusuario;
+
+  setMostrarBanner({
+    estado: true,
+    texto: `El otro usuario ha puesto su estado en: ${estado}`,
+  });
+
+  if (!soyQuienCambio) {
+    Alert.alert("Estado del otro usuario", `Ha elegido: ${estado}`);
+  }
+});
+
+
+
+  socketRef.current.on("nuevoMensaje", (mensaje) => {
+    console.log("📥 Mensaje recibido:", mensaje);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: mensaje.idmensaje?.toString() || Date.now().toString(),
+        texto: mensaje.texto,
+        sender: mensaje.codremitente === codusuario ? "me" : "other",
+      },
+    ]);
+  });
+
+  return () => {
+    socketRef.current.disconnect();
+    console.log("🔴 Socket desconectado");
+  };
+}, [codarticulo, codarticulodueño, codusuario, coddueño]);
+
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -173,39 +224,45 @@ export default function Chat() {
     );
   }
   const modificarEstado = async (codarticulo, codarticulo2, nuevoEstado) => {
-  try {
-    const response = await axios.post(`${urlBackend}match`, {
-      codarticulo,
-      codarticulo2,
-      estado: nuevoEstado,
-    });
+    try {
+      const response = await axios.post(`${urlBackend}match`, {
+        codarticulo,
+        codarticulo2,
+        estado: nuevoEstado,
+      });
 
-    const final = response.data.estado_final;
+      const final = response.data.estado_final;
 
-    if (final === "Truequeado") {
-      Alert.alert("Trueque exitoso", "Ambas partes aceptaron el trueque.");
-    } else if (final === "Rechazado") {
-      Alert.alert("Trueque rechazado", "Una de las partes rechazó el trueque.");
-    } else {
-      Alert.alert("Esperando respuesta", "Aún falta que la otra parte responda.");
+      if (final === "Truequeado") {
+        Alert.alert("Trueque exitoso", "Ambas partes aceptaron el trueque.");
+      } else if (final === "Rechazado") {
+        Alert.alert(
+          "Trueque rechazado",
+          "Una de las partes rechazó el trueque."
+        );
+      } else {
+        Alert.alert(
+          "Esperando respuesta",
+          "Aún falta que la otra parte responda."
+        );
+      }
+      setMostrarBanner({ estado: false, texto: final });
+    } catch (error) {
+      if (error.response?.data?.estado_final === "Rechazado") {
+        Alert.alert(
+          "Trueque cancelado",
+          "El otro usuario ya rechazó el trueque. No se puede continuar."
+        );
+        setMostrarBanner({ estado: false, texto: "Rechazado" });
+      } else {
+        console.error("Error al modificar estado:", error);
+        Alert.alert(
+          "Error",
+          "Ocurrió un problema al intentar modificar el estado."
+        );
+      }
     }
-
-    setMostrarBanner({ estado: false, texto: final });
-
-  } catch (error) {
-    if (error.response?.data?.estado_final === "Rechazado") {
-      Alert.alert(
-        "Trueque cancelado",
-        "El otro usuario ya rechazó el trueque. No se puede continuar."
-      );
-      setMostrarBanner({ estado: false, texto: "Rechazado" });
-    } else {
-      console.error("Error al modificar estado:", error);
-      Alert.alert("Error", "Ocurrió un problema al intentar modificar el estado.");
-    }
-  }
-};
-
+  };
 
   return (
     <KeyboardAvoidingView

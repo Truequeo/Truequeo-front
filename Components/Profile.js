@@ -56,11 +56,12 @@ export default function Profile() {
       return () => backHandler.remove();
     }, [verComentarios, actualizarUser, usuario, token, navigation]) // Dependencias completas
   );
+  const [imageTimestamp, setImageTimestamp] = useState(Date.now());
 
   useEffect(() => {
     if (usuario?.fotoperfil) {
       console.log(usuario?.fotoperfil);
-      setFotoperfil(`${usuario.fotoperfil}?t=${Date.now()}`); // Añade timestamp para evitar caché
+      setFotoperfil(`${usuario.fotoperfil}?t=${imageTimestamp}`); // Añade timestamp para evitar caché
     }
   }, [usuario?.fotoperfil]);
 

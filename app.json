@@ -16,6 +16,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Esta aplicación necesita acceso a tus fotos para seleccionar una imagen de perfil."
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -24,13 +27,19 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.Truequeo"
+      "package": "com.anonymous.Truequeo",
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-build-properties"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7e137bb3-1031-4d95-a412-812083dade48"
+      }
+    }
   }
 }

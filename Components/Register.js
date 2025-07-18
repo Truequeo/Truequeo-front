@@ -130,7 +130,7 @@ export default function Register() {
     });
     console.log(formData);
     try {
-      const { usuario: nuevoUsuario, token: nuevoToken } = await registerUser(
+      const { usuario , token } = await registerUser(
         formData
       );
 
@@ -142,7 +142,8 @@ export default function Register() {
         onPressButton: () => {
           Dialog.hide();
           navigation.replace("Add", {
-            usuario: nuevoUsuario,
+            usuario: usuario,
+            token : token
           });
         },
       });
